@@ -79,8 +79,13 @@
 
   .greeting{
     text-align:center;font-size:16px;line-height:1.5;
-    color:var(--text);margin:0 6px 22px;font-weight:500;
+    margin:0 6px 22px;font-weight:600;
+    background:linear-gradient(100deg, #e9eefb 30%, #9fc4ff 50%, #e9eefb 70%);
+    background-size:220% auto;
+    -webkit-background-clip:text;background-clip:text;color:transparent;
+    animation:shimmer 5s linear infinite;
   }
+  @keyframes shimmer{ 0%{background-position:0% 0;} 100%{background-position:-220% 0;} }
 
   .menu-list{display:flex;flex-direction:column;gap:12px;margin-top:auto;margin-bottom:6px;}
   .home-scroll{flex:1;display:flex;flex-direction:column;overflow-y:auto;}
@@ -110,6 +115,19 @@
   .glass-btn .icon-circle{flex-shrink:0;}
   .glass-btn .label{flex:1;}
   .glass-btn .arrow{opacity:.6;font-size:18px;}
+  .glass-btn .label-col{flex:1;display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .glass-btn .label-col .label{font-size:16px;font-weight:700;}
+  .glass-btn .label-col .sub{font-size:12px;font-weight:500;color:var(--text-dim);white-space:normal;line-height:1.3;}
+  .glass-btn::before{
+    content:"";position:absolute;left:0;top:12px;bottom:12px;width:3px;border-radius:3px;
+    background:var(--accent-c, transparent);opacity:.85;
+  }
+  .accent-1{ --accent-c:#4fa8ff; }
+  .accent-2{ --accent-c:#ffca4f; }
+  .accent-3{ --accent-c:#4fe0c4; }
+  .accent-4{ --accent-c:#c58bff; }
+  .accent-5{ --accent-c:#ff7fae; }
+  .accent-6{ --accent-c:#7cff9e; }
 
   .icon-circle{
     width:34px;height:34px;border-radius:50%;
@@ -239,19 +257,61 @@ let state = { direction:null, fromCity:null, toCity:null, fromCustom:"", toCusto
 let history = [];
 
 /* ---------------- ADMIN / ANNOUNCEMENT ----------------
-   Change ADMIN_PASSWORD below to whatever you like.
    Tap the home logo 5 times quickly to open the admin panel.
-   NOTE: this saves only in this browser's local storage — it is
-   a simple on-device editor, not a shared server database, so it
-   will not update the banner for other visitors on their own
-   devices/browsers unless you also update this file directly. */
+   Change ADMIN_PASSWORD below to whatever you like.
+
+   This now uses kvdb.io — a free, keyless shared storage service
+   (no account/signup needed) — so a news update you save in the
+   admin panel becomes visible to EVERY visitor on any device,
+   not just your own browser.
+
+   First-time setup (only needs to be done once, ever):
+   1. Tap the logo 5x, enter the admin password.
+   2. If no shared storage is linked yet, you'll see a
+      "Ulashilgan xotira yaratish" button — tap it once.
+   3. Copy the ID it shows you and send it to me (Claude) so I can
+      bake it permanently into KVDB_BUCKET below and re-send the
+      file — after that, every future edit is instantly public. */
 const ADMIN_PASSWORD = "omad2026";
+const KVDB_BUCKET = ""; // <-- after first setup, paste your bucket ID here (see instructions above)
 let logoTapCount = 0;
 let logoTapTimer = null;
-function getAnnouncement(){
+
+function activeBucket(){
+  return KVDB_BUCKET || (function(){ try{ return localStorage.getItem("omad_kvdb_bucket") || ""; }catch(e){ return ""; } })();
+}
+async function createSharedBucket(){
+  const res = await fetch("https://kvdb.io/", { method:"POST" });
+  const location = res.headers.get("Location") || await res.text();
+  const bucket = (location.match(/kvdb\.io\/([a-zA-Z0-9]+)/) || [])[1] || location.trim();
+  try{ localStorage.setItem("omad_kvdb_bucket", bucket); }catch(e){}
+  return bucket;
+}
+async function fetchAnnouncement(){
+  const bucket = activeBucket();
+  if(!bucket) return getAnnouncementLocal();
+  try{
+    const res = await fetch(`https://kvdb.io/${bucket}/announcement`);
+    if(res.status === 404) return "";
+    if(!res.ok) return getAnnouncementLocal();
+    const text = await res.text();
+    setAnnouncementLocal(text);
+    return text;
+  }catch(e){ return getAnnouncementLocal(); }
+}
+async function saveAnnouncement(text){
+  setAnnouncementLocal(text);
+  const bucket = activeBucket();
+  if(!bucket) return false;
+  try{
+    await fetch(`https://kvdb.io/${bucket}/announcement`, { method:"PUT", body:text });
+    return true;
+  }catch(e){ return false; }
+}
+function getAnnouncementLocal(){
   try{ return localStorage.getItem("omad_announcement") || ""; }catch(e){ return ""; }
 }
-function setAnnouncement(text){
+function setAnnouncementLocal(text){
   try{ localStorage.setItem("omad_announcement", text); }catch(e){}
 }
 
@@ -259,6 +319,12 @@ function setAnnouncement(text){
 const T = {
   uz:{
     greeting:"Assalomu alekum! Sizlarni Omad Tour saytimizda ko'rganimizdan bag'oyat xursandmiz.",
+    aviabiletSub:"Yo'nalish tanlang, jonli narxlar va bron",
+    vizaSub:"Natijani tekshiring, konsullikka bog'laning",
+    notarialSub:"Tarjima, doverennost, sug'urta va boshqalar",
+    guruhlarSub:"Narxlar, yangiliklar va konsullik guruhlari",
+    manzillarSub:"Ofislarimiz manzili va xarita",
+    yordamSub:"Fikringiz va takliflaringiz uchun",
     aviabilet:"Aviabilet bo'limi",
     viza:"Viza javobini tekshirish",
     notarial:"Notarial xizmatlar",
@@ -317,6 +383,12 @@ const T = {
   },
   ru:{
     greeting:"Здравствуйте! Мы очень рады видеть вас на сайте Omad Tour.",
+    aviabiletSub:"Выберите направление, живые цены и бронь",
+    vizaSub:"Проверьте результат, свяжитесь с консульством",
+    notarialSub:"Перевод, доверенность, страховка и другое",
+    guruhlarSub:"Цены, новости и консульские группы",
+    manzillarSub:"Адреса наших офисов и карта",
+    yordamSub:"Для вашего отзыва и предложений",
     aviabilet:"Раздел авиабилетов",
     viza:"Проверка ответа визы",
     notarial:"Нотариальные услуги",
@@ -375,6 +447,12 @@ const T = {
   },
   en:{
     greeting:"Hello! We are very happy to see you on the Omad Tour website.",
+    aviabiletSub:"Pick a route, live prices and booking",
+    vizaSub:"Check your result, reach the consulate",
+    notarialSub:"Translation, power of attorney, insurance & more",
+    guruhlarSub:"Prices, news and consular groups",
+    manzillarSub:"Our office addresses and map",
+    yordamSub:"For your feedback and suggestions",
     aviabilet:"Flight tickets",
     viza:"Check visa result",
     notarial:"Notary services",
@@ -555,20 +633,20 @@ function screenHTML(name, opts){
 }
 
 function homeScreen(){
-  const announcement = getAnnouncement();
+  const announcement = getAnnouncementLocal();
   return `<div class="screen active">
     ${topbar(false)}
     <div class="home-scroll">
       <div class="logo-wrap"><div class="logo-circle" id="logoTap"><img src="${LOGO_SRC}" onerror="this.style.display='none'; this.parentNode.innerHTML='<span style=\\'font-weight:800;font-size:12px;color:#3a0a26;text-align:center\\'>OMAD<br>TOUR</span>'"></div></div>
-      ${announcement ? `<div class="news-ticker"><span>📢 ${announcement}</span></div>` : ""}
+      <div class="news-ticker" id="newsTicker" style="${announcement ? '' : 'display:none;'}"><span id="newsTickerText">📢 ${announcement}</span></div>
       <p class="greeting">${t('greeting')}</p>
       <div class="menu-list">
-        <button class="glass-btn" data-go="aviaMenu">${iconCircle(ICONS.plane)}<span class="label">${t('aviabilet')}</span><span class="arrow">→</span></button>
-        <button class="glass-btn" data-go="viza">${iconCircle(ICONS.visa)}<span class="label">${t('viza')}</span><span class="arrow">→</span></button>
-        <button class="glass-btn" data-go="notarial">${iconCircle(ICONS.notary)}<span class="label">${t('notarial')}</span><span class="arrow">→</span></button>
-        <button class="glass-btn" data-go="groups">${iconCircle(ICONS.group)}<span class="label">${t('guruhlar')}</span><span class="arrow">→</span></button>
-        <button class="glass-btn" data-go="addresses">${iconCircle(ICONS.pin)}<span class="label">${t('manzillar')}</span><span class="arrow">→</span></button>
-        <button class="glass-btn" data-go="help">${iconCircle(ICONS.help)}<span class="label">${t('yordam')}</span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-1" data-go="aviaMenu">${iconCircle(ICONS.plane)}<span class="label-col"><span class="label">${t('aviabilet')}</span><span class="sub">${t('aviabiletSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-2" data-go="viza">${iconCircle(ICONS.visa)}<span class="label-col"><span class="label">${t('viza')}</span><span class="sub">${t('vizaSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-3" data-go="notarial">${iconCircle(ICONS.notary)}<span class="label-col"><span class="label">${t('notarial')}</span><span class="sub">${t('notarialSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-4" data-go="groups">${iconCircle(ICONS.group)}<span class="label-col"><span class="label">${t('guruhlar')}</span><span class="sub">${t('guruhlarSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-5" data-go="addresses">${iconCircle(ICONS.pin)}<span class="label-col"><span class="label">${t('manzillar')}</span><span class="sub">${t('manzillarSub')}</span></span><span class="arrow">→</span></button>
+        <button class="glass-btn accent-6" data-go="help">${iconCircle(ICONS.help)}<span class="label-col"><span class="label">${t('yordam')}</span><span class="sub">${t('yordamSub')}</span></span><span class="arrow">→</span></button>
       </div>
     </div>
   </div>`;
@@ -774,13 +852,19 @@ function addressesScreen(){
 }
 
 function adminScreen(){
-  const current = getAnnouncement();
+  const current = getAnnouncementLocal();
+  const bucket = activeBucket();
+  const bucketSection = bucket
+    ? `<div class="section-text" style="border-color:rgba(60,200,120,.4);"><b>✅ Ulashilgan xotira faol.</b> Bucket ID: <code>${bucket}</code>${KVDB_BUCKET ? " (faylga o'rnatilgan — barqaror)" : " (hozircha faqat shu brauzerda saqlangan — buni menga (Claude'ga) yuboring, men doimiy qilib faylga joylab beraman)"}</div>`
+    : `<div class="section-text">Hali ulashilgan xotira yaratilmagan — hozirgi holatda yangilik faqat shu brauzeringizda ko'rinadi. Pastdagi tugmani bir marta bosib, barcha mijozlarga ko'rinadigan xotira yarating.</div>
+       <button class="primary-btn" id="createBucketBtn" style="margin-bottom:16px;">Ulashilgan xotira yaratish</button>`;
   return `<div class="screen active">
     ${topbar(true)}
     <h2 class="title">Admin panel</h2>
-    <div class="section-text">Bu yerda Home sahifasidagi yangilik bannerini o'zgartirishingiz mumkin. Bo'sh qoldirib saqlasangiz, banner butunlay yo'qoladi. <b>Eslatma:</b> bu saqlash faqat shu qurilma/brauzerda ishlaydi — barcha mijozlarga bir vaqtda ko'rsatish uchun serverli tizim kerak bo'ladi.</div>
+    ${bucketSection}
     <div class="field-label">Yangilik matni</div>
     <textarea id="announceInput" placeholder="Masalan: 15-avgustdan yangi reyslar qo'shildi...">${current}</textarea>
+    <div class="footer-note" id="announceStatus" style="min-height:16px;"></div>
     <button class="primary-btn" id="announceSaveBtn">Saqlash</button>
   </div>`;
 }
@@ -882,6 +966,13 @@ function bindEvents(name, opts){
   }
 
   if(name==="home"){
+    fetchAnnouncement().then(text=>{
+      const el = document.getElementById("newsTicker");
+      const txtEl = document.getElementById("newsTickerText");
+      if(!el || !txtEl) return;
+      if(text){ txtEl.textContent = "📢 " + text; el.style.display = ""; }
+      else{ el.style.display = "none"; }
+    });
     const logo = document.getElementById("logoTap");
     logo?.addEventListener("click", ()=>{
       logoTapCount++;
@@ -897,10 +988,29 @@ function bindEvents(name, opts){
   }
 
   if(name==="admin"){
-    document.getElementById("announceSaveBtn").addEventListener("click", ()=>{
+    document.getElementById("createBucketBtn")?.addEventListener("click", async (e)=>{
+      e.target.textContent = "Yaratilmoqda...";
+      e.target.disabled = true;
+      try{
+        const bucket = await createSharedBucket();
+        pushScreen("admin", {});
+      }catch(err){
+        alert("Xotira yaratib bo'lmadi, internetni tekshirib qayta urinib ko'ring.");
+        e.target.textContent = "Ulashilgan xotira yaratish";
+        e.target.disabled = false;
+      }
+    });
+    document.getElementById("announceSaveBtn").addEventListener("click", async ()=>{
+      const btn = document.getElementById("announceSaveBtn");
+      const status = document.getElementById("announceStatus");
       const val = document.getElementById("announceInput").value.trim();
-      setAnnouncement(val);
-      goHome();
+      btn.disabled = true; btn.textContent = "Saqlanmoqda...";
+      const shared = await saveAnnouncement(val);
+      if(shared){ goHome(); }
+      else{
+        status.textContent = "Saqlandi (faqat shu brauzerda) — hammaga ko'rsatish uchun avval ulashilgan xotira yarating.";
+        btn.disabled = false; btn.textContent = "Saqlash";
+      }
     });
   }
 }
