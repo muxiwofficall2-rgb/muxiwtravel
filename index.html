@@ -204,13 +204,30 @@
 
   .footer-note{font-size:11.5px;color:var(--text-dim);text-align:center;margin-top:16px;opacity:.7;}
 
-  .news-ticker{
-    background:linear-gradient(90deg, rgba(232,53,79,.22), rgba(232,53,79,.06));
-    border:1px solid rgba(232,53,79,.35);
-    border-radius:14px;padding:9px 14px;margin:2px 0 16px;
-    font-size:13px;font-weight:600;color:#ffd9df;
-    overflow:hidden;white-space:nowrap;text-overflow:ellipsis;
+  .bell-btn{
+    position:relative;background:var(--glass);border:1px solid var(--glass-border);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    color:var(--text);border-radius:12px;padding:6px 12px;font-size:16px;cursor:pointer;
   }
+  .bell-btn .badge{
+    position:absolute;top:-6px;right:-6px;background:var(--accent-red);color:#fff;
+    font-size:10.5px;font-weight:800;border-radius:10px;min-width:17px;height:17px;
+    display:flex;align-items:center;justify-content:center;padding:0 3px;
+    box-shadow:0 2px 6px rgba(0,0,0,.4);
+  }
+  .news-item{
+    background:var(--glass);border:1px solid var(--glass-border);
+    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+    border-radius:14px;padding:12px 14px;margin-bottom:10px;font-size:14px;line-height:1.5;
+  }
+  .news-item .news-date{font-size:11.5px;color:var(--text-dim);margin-bottom:4px;display:block;}
+  .admin-row{
+    display:flex;align-items:center;gap:10px;background:var(--glass);border:1px solid var(--glass-border);
+    border-radius:12px;padding:10px 12px;margin-bottom:8px;font-size:13.5px;
+  }
+  .admin-row .grow{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;}
+  .admin-row .del-btn{background:var(--accent-red);color:#fff;border:none;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;flex-shrink:0;}
+  .admin-row .view-btn{background:rgba(255,255,255,.15);color:var(--text);border:none;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;flex-shrink:0;text-decoration:none;}
 
   .fly-plane{
     position:fixed;top:8%;left:-8%;z-index:0;pointer-events:none;
@@ -260,10 +277,10 @@ let history = [];
    Tap the home logo 5 times quickly to open the admin panel.
    Change ADMIN_PASSWORD below to whatever you like.
 
-   This now uses kvdb.io — a free, keyless shared storage service
-   (no account/signup needed) — so a news update you save in the
-   admin panel becomes visible to EVERY visitor on any device,
-   not just your own browser.
+   This uses kvdb.io — a free, keyless shared storage service
+   (no account/signup needed) — so anything you add in the admin
+   panel (news items, visa submissions) becomes visible to EVERY
+   visitor / to you from any device, not just the one you used.
 
    First-time setup (only needs to be done once, ever):
    1. Tap the logo 5x, enter the admin password.
@@ -271,9 +288,10 @@ let history = [];
       "Ulashilgan xotira yaratish" button — tap it once.
    3. Copy the ID it shows you and send it to me (Claude) so I can
       bake it permanently into KVDB_BUCKET below and re-send the
-      file — after that, every future edit is instantly public. */
+      file — after that, every future edit is instantly shared. */
 const ADMIN_PASSWORD = "omad2026";
 const KVDB_BUCKET = ""; // <-- after first setup, paste your bucket ID here (see instructions above)
+const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7"; // used only for visa-check photo uploads
 let logoTapCount = 0;
 let logoTapTimer = null;
 
@@ -287,32 +305,60 @@ async function createSharedBucket(){
   try{ localStorage.setItem("omad_kvdb_bucket", bucket); }catch(e){}
   return bucket;
 }
-async function fetchAnnouncement(){
+async function kvGetJSON(key, fallback){
   const bucket = activeBucket();
-  if(!bucket) return getAnnouncementLocal();
+  if(!bucket) return fallback;
   try{
-    const res = await fetch(`https://kvdb.io/${bucket}/announcement`);
-    if(res.status === 404) return "";
-    if(!res.ok) return getAnnouncementLocal();
+    const res = await fetch(`https://kvdb.io/${bucket}/${key}`);
+    if(res.status === 404) return fallback;
+    if(!res.ok) return fallback;
     const text = await res.text();
-    setAnnouncementLocal(text);
-    return text;
-  }catch(e){ return getAnnouncementLocal(); }
+    return text ? JSON.parse(text) : fallback;
+  }catch(e){ return fallback; }
 }
-async function saveAnnouncement(text){
-  setAnnouncementLocal(text);
+async function kvSetJSON(key, value){
   const bucket = activeBucket();
   if(!bucket) return false;
   try{
-    await fetch(`https://kvdb.io/${bucket}/announcement`, { method:"PUT", body:text });
+    await fetch(`https://kvdb.io/${bucket}/${key}`, { method:"PUT", body: JSON.stringify(value) });
     return true;
   }catch(e){ return false; }
 }
-function getAnnouncementLocal(){
-  try{ return localStorage.getItem("omad_announcement") || ""; }catch(e){ return ""; }
+
+/* ---- News list ---- */
+async function fetchNewsList(){ return await kvGetJSON("news_list", []); }
+async function addNewsItem(text){
+  const list = await fetchNewsList();
+  list.unshift({ id: Date.now(), text, date: new Date().toLocaleDateString("uz-UZ") });
+  return await kvSetJSON("news_list", list);
 }
-function setAnnouncementLocal(text){
-  try{ localStorage.setItem("omad_announcement", text); }catch(e){}
+async function deleteNewsItem(id){
+  const list = await fetchNewsList();
+  const filtered = list.filter(n => n.id !== id);
+  return await kvSetJSON("news_list", filtered);
+}
+function getNewsSeenCount(){ try{ return parseInt(localStorage.getItem("omad_news_seen")||"0"); }catch(e){ return 0; } }
+function setNewsSeenCount(n){ try{ localStorage.setItem("omad_news_seen", String(n)); }catch(e){} }
+
+/* ---- Visa-check submissions ---- */
+async function uploadToImgbb(file){
+  const fd = new FormData();
+  fd.append("image", file);
+  const res = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method:"POST", body: fd });
+  const data = await res.json();
+  if(data && data.data && data.data.url) return data.data.url;
+  throw new Error("upload failed");
+}
+async function fetchVisaSubmissions(){ return await kvGetJSON("visa_submissions", []); }
+async function addVisaSubmission(phone, imageUrl){
+  const list = await fetchVisaSubmissions();
+  list.unshift({ id: Date.now(), phone, imageUrl, date: new Date().toLocaleString("uz-UZ") });
+  return await kvSetJSON("visa_submissions", list);
+}
+async function deleteVisaSubmission(id){
+  const list = await fetchVisaSubmissions();
+  const filtered = list.filter(n => n.id !== id);
+  return await kvSetJSON("visa_submissions", filtered);
 }
 
 /* ---------------- TRANSLATIONS ---------------- */
@@ -379,6 +425,15 @@ const T = {
     mon:["Yanvar","Fevral","Mart","Aprel","May","Iyun","Iyul","Avgust","Sentabr","Oktabr","Noyabr","Dekabr"],
     dow:["Ya","Du","Se","Ch","Pa","Ju","Sh"],
     vizaFrameNote:"Agar sahifa shu yerda ochilmasa",
+    newsTitle:"Yangiliklar",
+    loading:"Yuklanmoqda...",
+    contactUs:"Bog'lanish",
+    vizaSubmitBtn:"Vizani shu yerdan tekshirish",
+    vizaSubmitText:"Pasport/anketa rasmingizni yuklang va telefon raqamingizni qoldiring — mutaxassisimiz tez orada siz bilan bog'lanadi.",
+    yourPhone:"Telefon raqamingiz",
+    uploadPhoto:"Hujjat rasmini yuklang",
+    submitSuccess:"So'rovingiz qabul qilindi! Tez orada siz bilan bog'lanamiz.",
+    submitFail:"Yuborishda xatolik yuz berdi. Internetni tekshirib qayta urinib ko'ring.",
     langName:"O'zbekcha"
   },
   ru:{
@@ -443,6 +498,15 @@ const T = {
     mon:["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"],
     dow:["Пн","Вт","Ср","Чт","Пт","Сб","Вс"],
     vizaFrameNote:"Если страница здесь не открывается",
+    newsTitle:"Новости",
+    loading:"Загрузка...",
+    contactUs:"Связаться",
+    vizaSubmitBtn:"Проверить визу прямо здесь",
+    vizaSubmitText:"Загрузите фото паспорта/анкеты и оставьте номер телефона — наш специалист скоро свяжется с вами.",
+    yourPhone:"Ваш номер телефона",
+    uploadPhoto:"Загрузите фото документа",
+    submitSuccess:"Ваша заявка принята! Мы скоро с вами свяжемся.",
+    submitFail:"Ошибка при отправке. Проверьте интернет и попробуйте снова.",
     langName:"Русский"
   },
   en:{
@@ -507,6 +571,15 @@ const T = {
     mon:["January","February","March","April","May","June","July","August","September","October","November","December"],
     dow:["Mo","Tu","We","Th","Fr","Sa","Su"],
     vizaFrameNote:"If the page doesn't load here",
+    newsTitle:"News",
+    loading:"Loading...",
+    contactUs:"Contact us",
+    vizaSubmitBtn:"Check your visa right here",
+    vizaSubmitText:"Upload a photo of your passport/form and leave your phone number — our specialist will reach out soon.",
+    yourPhone:"Your phone number",
+    uploadPhoto:"Upload a document photo",
+    submitSuccess:"Your request was received! We'll contact you soon.",
+    submitFail:"Something went wrong sending this. Check your connection and try again.",
     langName:"English"
   }
 };
@@ -617,6 +690,8 @@ function screenHTML(name, opts){
   switch(name){
     case "home": return homeScreen();
     case "admin": return adminScreen();
+    case "news": return newsScreen();
+    case "vizaSubmitForm": return vizaSubmitFormScreen();
     case "aviaMenu": return aviaMenuScreen();
     case "tourServices": return tourServicesScreen();
     case "cityStep": return cityStepScreen(opts);
@@ -633,12 +708,19 @@ function screenHTML(name, opts){
 }
 
 function homeScreen(){
-  const announcement = getAnnouncementLocal();
+  const unread = Math.max(0, (parseInt(localStorage.getItem("omad_news_cache_count")||"0")) - getNewsSeenCount());
   return `<div class="screen active">
-    ${topbar(false)}
+    <div class="topbar">
+      <button class="bell-btn" id="newsBellBtn">🔔${unread>0 ? `<span class="badge" id="newsBadge">${unread}</span>` : `<span class="badge" id="newsBadge" style="display:none;"></span>`}</button>
+      <div class="spacer"></div>
+      <div class="lang-switch">
+        <button class="lang-btn ${LANG==='uz'?'active':''}" data-lang="uz">UZ 🇺🇿</button>
+        <button class="lang-btn ${LANG==='ru'?'active':''}" data-lang="ru">RU 🇷🇺</button>
+        <button class="lang-btn ${LANG==='en'?'active':''}" data-lang="en">EN 🇬🇧</button>
+      </div>
+    </div>
     <div class="home-scroll">
       <div class="logo-wrap"><div class="logo-circle" id="logoTap"><img src="${LOGO_SRC}" onerror="this.style.display='none'; this.parentNode.innerHTML='<span style=\\'font-weight:800;font-size:12px;color:#3a0a26;text-align:center\\'>OMAD<br>TOUR</span>'"></div></div>
-      <div class="news-ticker" id="newsTicker" style="${announcement ? '' : 'display:none;'}"><span id="newsTickerText">📢 ${announcement}</span></div>
       <p class="greeting">${t('greeting')}</p>
       <div class="menu-list">
         <button class="glass-btn accent-1" data-go="aviaMenu">${iconCircle(ICONS.plane)}<span class="label-col"><span class="label">${t('aviabilet')}</span><span class="sub">${t('aviabiletSub')}</span></span><span class="arrow">→</span></button>
@@ -780,17 +862,21 @@ function vizaScreen(){
     ${topbar(true)}
     <h2 class="title">${t('viza')}</h2>
     <div class="section-text">${t('vizaText')}</div>
+    <button class="primary-btn" data-go="vizaSubmitForm" style="width:100%;margin-bottom:14px;">${t('vizaSubmitBtn')}</button>
     <div class="list-col">
       <a class="glass-btn" href="${VISA_LINK}">${iconCircle(ICONS.visa)}<span class="label">${t('vizaCheck')}</span></a>
       <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
     </div>
     <h2 class="title" style="margin-top:20px;">${t('vizaExperts')}</h2>
     <div class="list-col">
-      <a class="glass-btn" href="${waHref(VISA_EXPERTS.whatsapp)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
-      <a class="glass-btn" href="${tgHref(VISA_EXPERTS.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
-      <a class="glass-btn" href="${VISA_EXPERTS.imo}" target="_blank">${iconCircle(ICONS.imo)}<span class="label">Imo</span></a>
-      <a class="glass-btn" href="${VISA_EXPERTS.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
-      <a class="glass-btn" href="${telHref(VISA_EXPERTS.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('call')}</span></a>
+      <button class="glass-btn" id="expertsToggle">${iconCircle(ICONS.help)}<span class="label">${t('contactUs')}</span><span class="arrow" id="expertsArrow">▾</span></button>
+      <div class="list-col" id="expertsList" style="display:none;">
+        <a class="glass-btn" href="${waHref(VISA_EXPERTS.whatsapp)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+        <a class="glass-btn" href="${tgHref(VISA_EXPERTS.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+        <a class="glass-btn" href="${VISA_EXPERTS.imo}" target="_blank">${iconCircle(ICONS.imo)}<span class="label">Imo</span></a>
+        <a class="glass-btn" href="${VISA_EXPERTS.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
+        <a class="glass-btn" href="${telHref(VISA_EXPERTS.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('call')}</span></a>
+      </div>
     </div>
   </div>`;
 }
@@ -807,6 +893,30 @@ function tourServicesScreen(){
       <a class="glass-btn" href="${c.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
       <a class="glass-btn" href="${telHref(c.call)}">${iconCircle(ICONS.phone)}<span class="label">${t('directCall')}</span></a>
     </div>
+  </div>`;
+}
+
+function newsScreen(){
+  return `<div class="screen active">
+    ${topbar(true)}
+    <h2 class="title">${t('newsTitle')}</h2>
+    <div id="newsListContainer"><div class="footer-note">${t('loading')}</div></div>
+  </div>`;
+}
+
+function vizaSubmitFormScreen(){
+  return `<div class="screen active">
+    ${topbar(true)}
+    <h2 class="title">${t('vizaSubmitBtn')}</h2>
+    <div class="section-text">${t('vizaSubmitText')}</div>
+    <div class="field-label">${t('yourPhone')}<span class="required-star">*</span></div>
+    <input type="text" id="vizaPhoneInput" placeholder="+998 90 123 45 67">
+    <div class="error-msg" id="vizaPhoneErr">${t('required')}</div>
+    <div class="field-label">${t('uploadPhoto')}<span class="required-star">*</span></div>
+    <input type="file" id="vizaFileInput" accept="image/*" style="margin-bottom:6px;">
+    <div class="error-msg" id="vizaFileErr">${t('required')}</div>
+    <button class="primary-btn" id="vizaSubmitBtnEl">${t('send')}</button>
+    <div class="footer-note" id="vizaSubmitStatus" style="min-height:16px;"></div>
   </div>`;
 }
 
@@ -852,20 +962,23 @@ function addressesScreen(){
 }
 
 function adminScreen(){
-  const current = getAnnouncementLocal();
   const bucket = activeBucket();
   const bucketSection = bucket
     ? `<div class="section-text" style="border-color:rgba(60,200,120,.4);"><b>✅ Ulashilgan xotira faol.</b> Bucket ID: <code>${bucket}</code>${KVDB_BUCKET ? " (faylga o'rnatilgan — barqaror)" : " (hozircha faqat shu brauzerda saqlangan — buni menga (Claude'ga) yuboring, men doimiy qilib faylga joylab beraman)"}</div>`
-    : `<div class="section-text">Hali ulashilgan xotira yaratilmagan — hozirgi holatda yangilik faqat shu brauzeringizda ko'rinadi. Pastdagi tugmani bir marta bosib, barcha mijozlarga ko'rinadigan xotira yarating.</div>
+    : `<div class="section-text">Hali ulashilgan xotira yaratilmagan — hozirgi holatda yangilik/so'rovlar faqat shu brauzeringizda ko'rinadi. Pastdagi tugmani bir marta bosib, barcha mijozlarga ko'rinadigan xotira yarating.</div>
        <button class="primary-btn" id="createBucketBtn" style="margin-bottom:16px;">Ulashilgan xotira yaratish</button>`;
   return `<div class="screen active">
     ${topbar(true)}
     <h2 class="title">Admin panel</h2>
     ${bucketSection}
-    <div class="field-label">Yangilik matni</div>
-    <textarea id="announceInput" placeholder="Masalan: 15-avgustdan yangi reyslar qo'shildi...">${current}</textarea>
-    <div class="footer-note" id="announceStatus" style="min-height:16px;"></div>
-    <button class="primary-btn" id="announceSaveBtn">Saqlash</button>
+
+    <h2 class="title" style="margin-top:8px;">📢 Yangiliklar</h2>
+    <textarea id="newsInput" placeholder="Yangi xabar matnini yozing..."></textarea>
+    <button class="primary-btn" id="newsAddBtn" style="margin-bottom:14px;">Yangilik qo'shish</button>
+    <div id="adminNewsList"><div class="footer-note">${t('loading')}</div></div>
+
+    <h2 class="title" style="margin-top:18px;">📩 Viza so'rovlari</h2>
+    <div id="adminVisaList"><div class="footer-note">${t('loading')}</div></div>
   </div>`;
 }
 
@@ -955,6 +1068,16 @@ function bindEvents(name, opts){
     bindCalendarEvents();
   }
 
+  if(name==="viza"){
+    document.getElementById("expertsToggle")?.addEventListener("click", ()=>{
+      const list = document.getElementById("expertsList");
+      const arrow = document.getElementById("expertsArrow");
+      const open = list.style.display !== "none";
+      list.style.display = open ? "none" : "flex";
+      arrow.textContent = open ? "▾" : "▴";
+    });
+  }
+
   if(name==="help"){
     document.getElementById("helpSendBtn").addEventListener("click", ()=>{
       const val = document.getElementById("helpInput").value.trim();
@@ -966,13 +1089,16 @@ function bindEvents(name, opts){
   }
 
   if(name==="home"){
-    fetchAnnouncement().then(text=>{
-      const el = document.getElementById("newsTicker");
-      const txtEl = document.getElementById("newsTickerText");
-      if(!el || !txtEl) return;
-      if(text){ txtEl.textContent = "📢 " + text; el.style.display = ""; }
-      else{ el.style.display = "none"; }
+    fetchNewsList().then(list=>{
+      try{ localStorage.setItem("omad_news_cache_count", String(list.length)); }catch(e){}
+      const unread = Math.max(0, list.length - getNewsSeenCount());
+      const badge = document.getElementById("newsBadge");
+      if(badge){
+        if(unread>0){ badge.textContent = unread; badge.style.display = "flex"; }
+        else{ badge.style.display = "none"; }
+      }
     });
+    document.getElementById("newsBellBtn")?.addEventListener("click", ()=> pushScreen("news", {}));
     const logo = document.getElementById("logoTap");
     logo?.addEventListener("click", ()=>{
       logoTapCount++;
@@ -987,12 +1113,52 @@ function bindEvents(name, opts){
     });
   }
 
+  if(name==="news"){
+    fetchNewsList().then(list=>{
+      setNewsSeenCount(list.length);
+      try{ localStorage.setItem("omad_news_cache_count", String(list.length)); }catch(e){}
+      const c = document.getElementById("newsListContainer");
+      if(!c) return;
+      if(!list.length){ c.innerHTML = `<div class="footer-note">—</div>`; return; }
+      c.innerHTML = list.map(n => `<div class="news-item"><span class="news-date">${n.date}</span>${n.text}</div>`).join("");
+    });
+  }
+
+  if(name==="vizaSubmitForm"){
+    document.getElementById("vizaSubmitBtnEl").addEventListener("click", async ()=>{
+      const phone = document.getElementById("vizaPhoneInput").value.trim();
+      const fileInput = document.getElementById("vizaFileInput");
+      const file = fileInput.files[0];
+      let ok = true;
+      document.getElementById("vizaPhoneErr").style.display = phone ? "none" : "block";
+      document.getElementById("vizaFileErr").style.display = file ? "none" : "block";
+      if(!phone || !file) return;
+      const btn = document.getElementById("vizaSubmitBtnEl");
+      const status = document.getElementById("vizaSubmitStatus");
+      btn.disabled = true; btn.textContent = t('loading');
+      try{
+        const url = await uploadToImgbb(file);
+        const saved = await addVisaSubmission(phone, url);
+        if(saved){
+          status.textContent = t('submitSuccess');
+          setTimeout(()=> goHome(), 1400);
+        } else {
+          status.textContent = t('submitFail');
+          btn.disabled = false; btn.textContent = t('send');
+        }
+      }catch(err){
+        status.textContent = t('submitFail');
+        btn.disabled = false; btn.textContent = t('send');
+      }
+    });
+  }
+
   if(name==="admin"){
     document.getElementById("createBucketBtn")?.addEventListener("click", async (e)=>{
       e.target.textContent = "Yaratilmoqda...";
       e.target.disabled = true;
       try{
-        const bucket = await createSharedBucket();
+        await createSharedBucket();
         pushScreen("admin", {});
       }catch(err){
         alert("Xotira yaratib bo'lmadi, internetni tekshirib qayta urinib ko'ring.");
@@ -1000,18 +1166,51 @@ function bindEvents(name, opts){
         e.target.disabled = false;
       }
     });
-    document.getElementById("announceSaveBtn").addEventListener("click", async ()=>{
-      const btn = document.getElementById("announceSaveBtn");
-      const status = document.getElementById("announceStatus");
-      const val = document.getElementById("announceInput").value.trim();
-      btn.disabled = true; btn.textContent = "Saqlanmoqda...";
-      const shared = await saveAnnouncement(val);
-      if(shared){ goHome(); }
-      else{
-        status.textContent = "Saqlandi (faqat shu brauzerda) — hammaga ko'rsatish uchun avval ulashilgan xotira yarating.";
-        btn.disabled = false; btn.textContent = "Saqlash";
-      }
+
+    function renderAdminNews(){
+      fetchNewsList().then(list=>{
+        const c = document.getElementById("adminNewsList");
+        if(!c) return;
+        if(!list.length){ c.innerHTML = `<div class="footer-note">Hozircha yangiliklar yo'q</div>`; return; }
+        c.innerHTML = list.map(n => `<div class="admin-row"><span class="grow"><b>${n.date}</b> — ${n.text}</span><button class="del-btn" data-newsid="${n.id}">O'chirish</button></div>`).join("");
+        c.querySelectorAll("[data-newsid]").forEach(b=>{
+          b.addEventListener("click", async ()=>{
+            b.textContent = "...";
+            await deleteNewsItem(parseInt(b.dataset.newsid));
+            renderAdminNews();
+          });
+        });
+      });
+    }
+    renderAdminNews();
+    document.getElementById("newsAddBtn").addEventListener("click", async ()=>{
+      const input = document.getElementById("newsInput");
+      const val = input.value.trim();
+      if(!val) return;
+      const btn = document.getElementById("newsAddBtn");
+      btn.disabled = true; btn.textContent = "Qo'shilmoqda...";
+      await addNewsItem(val);
+      input.value = "";
+      btn.disabled = false; btn.textContent = "Yangilik qo'shish";
+      renderAdminNews();
     });
+
+    function renderAdminVisa(){
+      fetchVisaSubmissions().then(list=>{
+        const c = document.getElementById("adminVisaList");
+        if(!c) return;
+        if(!list.length){ c.innerHTML = `<div class="footer-note">Hozircha so'rovlar yo'q</div>`; return; }
+        c.innerHTML = list.map(n => `<div class="admin-row"><span class="grow"><b>${n.phone}</b><br><span style="opacity:.7;">${n.date}</span></span><a class="view-btn" href="${n.imageUrl}" target="_blank">Ko'rish</a><button class="del-btn" data-visaid="${n.id}">O'chirish</button></div>`).join("");
+        c.querySelectorAll("[data-visaid]").forEach(b=>{
+          b.addEventListener("click", async ()=>{
+            b.textContent = "...";
+            await deleteVisaSubmission(parseInt(b.dataset.visaid));
+            renderAdminVisa();
+          });
+        });
+      });
+    }
+    renderAdminVisa();
   }
 }
 
