@@ -151,10 +151,10 @@
   .airport-sub{display:flex;flex-direction:column;gap:8px;margin:4px 0 4px 14px;}
   .airport-sub .glass-btn{padding:11px 14px;font-size:14px;}
 
-  input[type="text"], textarea{
+  input[type="text"], input[type="tel"], textarea{
     width:100%;background:var(--glass);border:1px solid var(--glass-border);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    border-radius:14px;color:var(--text);padding:13px 14px;font-size:15px;
+    border-radius:14px;color:var(--text);padding:16px 14px;font-size:17px;font-weight:600;
     margin-bottom:6px;font-family:inherit;
   }
   textarea{min-height:120px;resize:vertical;}
@@ -929,21 +929,23 @@ function buildSummaryText(){
   return `Omad Tour\n${t('from')}: ${from}\n${t('to')}: ${to}\n${t('date')}: ${dateStr}`;
 }
 
+let lastContactSummary = "";
 function contactScreen(opts){
   const summary = buildSummaryText().replace(/\n/g,"<br>");
   const c = AVIA_CONTACTS;
   const bodyText = buildSummaryText();
+  lastContactSummary = bodyText;
   return `<div class="screen active">
     ${topbar(true)}
     <h2 class="title">${t('chooseContact')}</h2>
     <div class="contact-summary"><b>${t('ticketSummary')}:</b><br>${summary}</div>
     <div class="contact-list">
-      <a class="glass-btn" href="${tgHref(c.telegram)}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+      <a class="glass-btn" href="${tgHref(c.telegram)}" target="_blank" id="contactTgBtn">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
       <a class="glass-btn" href="${waHref(c.whatsapp, bodyText)}" target="_blank">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
-      <a class="glass-btn" href="${c.max}" target="_blank">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
+      <a class="glass-btn" href="${c.max}" target="_blank" id="contactMaxBtn">${iconCircle(ICONS.max)}<span class="label">Max</span></a>
       <a class="glass-btn" href="${smsHref(c.sms, bodyText)}">${iconCircle(ICONS.sms)}<span class="label">SMS</span></a>
     </div>
-    <div class="footer-note">${LANG==='uz'?'Telegram orqali yozishda matnni nusxalab yuboring':(LANG==='ru'?'При отправке через Telegram скопируйте текст маршрута':'When messaging via Telegram, copy the route text manually')}</div>
+    <div class="footer-note">${LANG==='uz'?"Telegram/Max tugmasini bosganingizda yo'nalish matni avtomatik nusxalanadi — chatga kirib shunchaki bosib turib qo'ying (paste)":(LANG==='ru'?"При нажатии Telegram/Max текст маршрута автоматически копируется — в чате просто вставьте его (paste)":"Tapping Telegram/Max automatically copies the route text — just paste it once you're in the chat")}</div>
   </div>`;
 }
 
@@ -1177,6 +1179,16 @@ function bindEvents(name, opts){
 
   if(name==="calendar"){
     bindCalendarEvents();
+  }
+
+  if(name==="contact"){
+    function copyThenGo(id){
+      document.getElementById(id)?.addEventListener("click", ()=>{
+        try{ navigator.clipboard?.writeText(lastContactSummary); }catch(e){}
+      });
+    }
+    copyThenGo("contactTgBtn");
+    copyThenGo("contactMaxBtn");
   }
 
   if(name==="viza"){
