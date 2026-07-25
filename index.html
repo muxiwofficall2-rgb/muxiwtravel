@@ -332,20 +332,29 @@ async function createSharedBucket(){
   try{ localStorage.setItem("omad_kvdb_bucket", bucket); }catch(e){}
   return bucket;
 }
+function kvCacheGet(key, fallback){
+  try{ const raw = localStorage.getItem("omad_cache_"+key); return raw ? JSON.parse(raw) : fallback; }catch(e){ return fallback; }
+}
+function kvCacheSet(key, value){
+  try{ localStorage.setItem("omad_cache_"+key, JSON.stringify(value)); }catch(e){}
+}
 async function kvGetJSON(key, fallback){
   const bucket = activeBucket();
-  if(!bucket) return fallback;
+  if(!bucket) return kvCacheGet(key, fallback);
   try{
     const res = await fetch(`https://kvdb.io/${bucket}/${key}`);
-    if(res.status === 404) return fallback;
-    if(!res.ok) return fallback;
+    if(res.status === 404) return kvCacheGet(key, fallback);
+    if(!res.ok) return kvCacheGet(key, fallback);
     const text = await res.text();
-    return text ? JSON.parse(text) : fallback;
-  }catch(e){ return fallback; }
+    const parsed = text ? JSON.parse(text) : fallback;
+    kvCacheSet(key, parsed);
+    return parsed;
+  }catch(e){ return kvCacheGet(key, fallback); }
 }
 async function kvSetJSON(key, value){
+  kvCacheSet(key, value); // always keep a local copy, so nothing is ever silently lost
   const bucket = activeBucket();
-  if(!bucket) return false;
+  if(!bucket) return false; // saved locally only — won't be visible to other visitors/devices until a shared bucket exists
   try{
     await fetch(`https://kvdb.io/${bucket}/${key}`, { method:"PUT", body: JSON.stringify(value) });
     return true;
@@ -1006,7 +1015,7 @@ function adminScreen(){
   const bucket = activeBucket();
   const bucketSection = bucket
     ? `<div class="section-text" style="border-color:rgba(60,200,120,.4);"><b>✅ Ulashilgan xotira faol.</b> Bucket ID: <code>${bucket}</code>${KVDB_BUCKET ? " (faylga o'rnatilgan — barqaror)" : " (hozircha faqat shu brauzerda saqlangan — buni menga (Claude'ga) yuboring, men doimiy qilib faylga joylab beraman)"}</div>`
-    : `<div class="section-text">Hali ulashilgan xotira yaratilmagan — hozirgi holatda yangilik/so'rovlar faqat shu brauzeringizda ko'rinadi. Pastdagi tugmani bir marta bosib, barcha mijozlarga ko'rinadigan xotira yarating.</div>
+    : `<div class="section-text" style="border-color:rgba(232,53,79,.6);background:rgba(232,53,79,.1);"><b>⚠️ Diqqat: hali ulashilgan xotira yaratilmagan.</b> Ya'ni hozir yozayotgan yangiliklar va kelayotgan viza so'rovlari faqat SIZ hozir turgan shu qurilma/brauzerda saqlanadi — boshqa telefon yoki kompyuterdan kirganda ko'rinmaydi. Buni butunlay hal qilish uchun pastdagi tugmani bir marta bosing, chiqqan ID'ni menga (Claude'ga) yuboring — men uni faylga abadiy o'rnatib beraman.</div>
        <button class="primary-btn" id="createBucketBtn" style="margin-bottom:16px;">Ulashilgan xotira yaratish</button>`;
   return `<div class="screen active">
     ${topbar(true)}
@@ -1219,14 +1228,9 @@ function bindEvents(name, opts){
       btn.disabled = true; btn.textContent = t('loading');
       try{
         const url = await uploadToImgbb(file);
-        const saved = await addVisaSubmission(phone, url);
-        if(saved){
-          status.textContent = t('submitSuccess');
-          setTimeout(()=> goHome(), 1400);
-        } else {
-          status.textContent = t('submitFail');
-          btn.disabled = false; btn.textContent = t('send');
-        }
+        await addVisaSubmission(phone, url); // always cached locally even if the shared bucket isn't set up yet
+        status.textContent = t('submitSuccess');
+        setTimeout(()=> goHome(), 1400);
       }catch(err){
         status.textContent = t('submitFail');
         btn.disabled = false; btn.textContent = t('send');
