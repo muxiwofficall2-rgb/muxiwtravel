@@ -163,6 +163,33 @@
   .field-label{font-size:14px;font-weight:600;margin:12px 0 6px;}
   .error-msg{color:var(--accent-red);font-size:12.5px;margin:-2px 0 10px;display:none;}
 
+  .upload-box{
+    width:100%;min-height:110px;
+    background:var(--glass);border:2px dashed var(--glass-border);
+    border-radius:16px;margin-bottom:6px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .upload-box:active{background:var(--glass-hover);}
+  .upload-empty{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    color:var(--text-dim);font-size:14px;font-weight:600;padding:20px;text-align:center;
+  }
+  .upload-folder-icon{font-size:30px;opacity:.85;}
+  .upload-preview{
+    width:100%;display:flex;align-items:center;gap:12px;padding:12px 14px;position:relative;
+  }
+  .upload-preview img{
+    width:64px;height:64px;object-fit:cover;border-radius:10px;border:1px solid var(--glass-border);flex-shrink:0;
+  }
+  .upload-info{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1;}
+  .upload-info span#uploadFileName{font-size:13.5px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .upload-filesize{font-size:12px;color:var(--text-dim);}
+  .upload-remove{
+    background:var(--accent-red);color:#fff;border:none;border-radius:50%;
+    width:26px;height:26px;font-size:13px;cursor:pointer;flex-shrink:0;
+  }
+
   .primary-btn{
     background:var(--accent-red);color:#fff;border:none;border-radius:16px;
     padding:14px;font-size:15.5px;font-weight:700;cursor:pointer;
@@ -913,7 +940,21 @@ function vizaSubmitFormScreen(){
     <input type="text" id="vizaPhoneInput" placeholder="+998 90 123 45 67">
     <div class="error-msg" id="vizaPhoneErr">${t('required')}</div>
     <div class="field-label">${t('uploadPhoto')}<span class="required-star">*</span></div>
-    <input type="file" id="vizaFileInput" accept="image/*" style="margin-bottom:6px;">
+    <input type="file" id="vizaFileInput" accept="image/*" style="display:none;">
+    <div class="upload-box" id="uploadBox">
+      <div class="upload-empty" id="uploadEmpty">
+        <span class="upload-folder-icon">📁</span>
+        <span>${t('uploadPhoto')}</span>
+      </div>
+      <div class="upload-preview" id="uploadPreview" style="display:none;">
+        <img id="uploadThumb" src="" alt="">
+        <div class="upload-info">
+          <span id="uploadFileName"></span>
+          <span id="uploadFileSize" class="upload-filesize"></span>
+        </div>
+        <button type="button" class="upload-remove" id="uploadRemoveBtn">✕</button>
+      </div>
+    </div>
     <div class="error-msg" id="vizaFileErr">${t('required')}</div>
     <button class="primary-btn" id="vizaSubmitBtnEl">${t('send')}</button>
     <div class="footer-note" id="vizaSubmitStatus" style="min-height:16px;"></div>
@@ -1125,11 +1166,51 @@ function bindEvents(name, opts){
   }
 
   if(name==="vizaSubmitForm"){
+    const fileInput = document.getElementById("vizaFileInput");
+    const uploadBox = document.getElementById("uploadBox");
+    const uploadEmpty = document.getElementById("uploadEmpty");
+    const uploadPreview = document.getElementById("uploadPreview");
+    const uploadThumb = document.getElementById("uploadThumb");
+    const uploadFileName = document.getElementById("uploadFileName");
+    const uploadFileSize = document.getElementById("uploadFileSize");
+
+    function formatSize(bytes){
+      if(bytes < 1024) return bytes + " B";
+      if(bytes < 1024*1024) return (bytes/1024).toFixed(2) + " KB";
+      return (bytes/(1024*1024)).toFixed(2) + " MB";
+    }
+    function showPreview(file){
+      const reader = new FileReader();
+      reader.onload = (e)=>{ uploadThumb.src = e.target.result; };
+      reader.readAsDataURL(file);
+      uploadFileName.textContent = file.name;
+      uploadFileSize.textContent = formatSize(file.size);
+      uploadEmpty.style.display = "none";
+      uploadPreview.style.display = "flex";
+      document.getElementById("vizaFileErr").style.display = "none";
+    }
+    function clearPreview(){
+      fileInput.value = "";
+      uploadEmpty.style.display = "flex";
+      uploadPreview.style.display = "none";
+      uploadThumb.src = "";
+    }
+
+    uploadBox.addEventListener("click", (e)=>{
+      if(e.target.id === "uploadRemoveBtn") return;
+      fileInput.click();
+    });
+    fileInput.addEventListener("change", ()=>{
+      if(fileInput.files[0]) showPreview(fileInput.files[0]);
+    });
+    document.getElementById("uploadRemoveBtn").addEventListener("click", (e)=>{
+      e.stopPropagation();
+      clearPreview();
+    });
+
     document.getElementById("vizaSubmitBtnEl").addEventListener("click", async ()=>{
       const phone = document.getElementById("vizaPhoneInput").value.trim();
-      const fileInput = document.getElementById("vizaFileInput");
       const file = fileInput.files[0];
-      let ok = true;
       document.getElementById("vizaPhoneErr").style.display = phone ? "none" : "block";
       document.getElementById("vizaFileErr").style.display = file ? "none" : "block";
       if(!phone || !file) return;
