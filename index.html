@@ -432,7 +432,7 @@ let history = [];
    3. Copy the ID it shows you and send it to me (Claude) so I can
       bake it permanently into KVDB_BUCKET below and re-send the
       file — after that, every future edit is instantly shared. */
-const ADMIN_PASSWORD = "Omad2026";
+const ADMIN_PASSWORD = "omad2026";
 const KVDB_BUCKET = ""; // <-- after first setup, paste your bucket ID here (see instructions above)
 const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7"; // used only for visa-check photo uploads
 
@@ -464,9 +464,15 @@ function activeBucket(){
   return KVDB_BUCKET || (function(){ try{ return localStorage.getItem("omad_kvdb_bucket") || ""; }catch(e){ return ""; } })();
 }
 async function createSharedBucket(){
-  const res = await fetch("https://kvdb.io/", { method:"POST" });
-  const location = res.headers.get("Location") || await res.text();
-  const bucket = (location.match(/kvdb\.io\/([a-zA-Z0-9]+)/) || [])[1] || location.trim();
+  const res = await fetch("https://kvdb.io/", {
+    method:"POST",
+    headers:{ "Content-Type":"application/x-www-form-urlencoded" },
+    body:"email=" + encodeURIComponent(HELP_EMAIL)
+  });
+  if(!res.ok) throw new Error("bucket creation failed");
+  const text = (await res.text()).trim();
+  const bucket = /^[a-zA-Z0-9]+$/.test(text) ? text : (text.match(/kvdb\.io\/([a-zA-Z0-9]+)/) || [])[1];
+  if(!bucket) throw new Error("no bucket id returned");
   try{ localStorage.setItem("omad_kvdb_bucket", bucket); }catch(e){}
   return bucket;
 }
@@ -632,7 +638,7 @@ const T = {
     helpFieldLabel:"Fikr-mulohazangiz",
     myVisaStatus:"So'rovim holati",
     statusReadyTitle:"Natija tayyor",
-    statusReadyText:"So'rovingiz bo'yicha natija tayyor. Batafsil ma'lumot uchun quyidagi aloqa vositalaridan biri orqali biz bilan bog'laning.",
+    statusReadyText:"Anketangiz bo'yicha natija tayyor. Vizani olish uchun O'zbekiston Respublikasi Bosh Konsulligiga shaxsan tashrif buyurib, konsul bilan uchrashishingiz kerak. Eslatib o'tamiz: bizning xizmatimiz faqat anketa to'ldirishdan iborat — vizaning o'zini faqat Konsullikning o'zi beradi.",
     statusPendingTitle:"Hali tayyor emas",
     statusPendingText:"So'rovingiz hali ko'rib chiqilmoqda, iltimos, biroz kuting. Xohlasangiz, Sankt-Peterburgdagi O'zbekiston Respublikasi Bosh Konsulligining rasmiy Telegram guruhiga murojaat qilishingiz yoki ular bilan uchrashuv so'rashingiz mumkin.",
     noVisaRequest:"Sizda hali yuborilgan so'rov mavjud emas.",
@@ -713,7 +719,7 @@ const T = {
     helpFieldLabel:"Ваш отзыв",
     myVisaStatus:"Статус моей заявки",
     statusReadyTitle:"Результат готов",
-    statusReadyText:"Результат по вашей заявке готов. За подробностями обратитесь к нам одним из способов связи ниже.",
+    statusReadyText:"Результат по вашей анкете готов. Для получения визы вам необходимо лично посетить Генеральное консульство Республики Узбекистан и встретиться с консулом. Обращаем внимание: наша услуга заключается только в заполнении анкеты — саму визу выдаёт исключительно Консульство.",
     statusPendingTitle:"Пока не готово",
     statusPendingText:"Ваша заявка ещё рассматривается, пожалуйста, подождите. При желании вы можете обратиться в официальную Telegram-группу Генерального консульства Республики Узбекистан в Санкт-Петербурге или запросить встречу.",
     noVisaRequest:"У вас пока нет отправленных заявок.",
@@ -794,7 +800,7 @@ const T = {
     helpFieldLabel:"Your Feedback",
     myVisaStatus:"My Request Status",
     statusReadyTitle:"Result Ready",
-    statusReadyText:"The result of your request is ready. Please contact us using one of the options below for further details.",
+    statusReadyText:"The result of your application is ready. To receive your visa, please visit the Consulate General of the Republic of Uzbekistan in person and meet with the consul. Please note: our service covers only the completion of the application form — the visa itself is issued solely by the Consulate.",
     statusPendingTitle:"Not Ready Yet",
     statusPendingText:"Your request is still being reviewed — please wait a little longer. If you wish, you may contact the official Telegram group of the Consulate General of the Republic of Uzbekistan in Saint Petersburg, or request a meeting.",
     noVisaRequest:"You have not submitted any requests yet.",
@@ -1452,7 +1458,8 @@ function bindEvents(name, opts){
             return `<div class="status-card status-card-ready">
               <b>${t('statusReadyTitle')}</b>
               <p>${t('statusReadyText')}</p>
-              <span class="footer-note" style="margin:0;">${n.date}</span>
+              <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
+              <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
             </div>`;
           }
           return `<div class="status-card status-card-pending">
