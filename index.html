@@ -314,6 +314,25 @@
   .admin-row .view-btn{background:rgba(255,255,255,.15);color:var(--text);border:none;border-radius:8px;padding:6px 10px;font-size:12px;cursor:pointer;flex-shrink:0;text-decoration:none;}
   .admin-row-thumb{width:38px;height:38px;border-radius:8px;object-fit:cover;flex-shrink:0;border:1px solid var(--glass-border);}
 
+  .admin-row-visa{flex-direction:column;align-items:stretch;gap:8px;}
+  .admin-row-top{display:flex;align-items:center;gap:10px;}
+  .admin-phone-link{color:var(--text);text-decoration:underline;font-weight:700;}
+  .admin-status-row{display:flex;gap:8px;}
+  .status-btn{
+    flex:1;border:1px solid var(--glass-border);background:transparent;color:var(--text-dim);
+    border-radius:8px;padding:7px 6px;font-size:12px;font-weight:700;cursor:pointer;
+  }
+  .status-btn.status-ready.active{background:rgba(70,200,120,.22);border-color:rgba(70,200,120,.6);color:#7cffa8;}
+  .status-btn.status-pending.active{background:rgba(232,53,79,.18);border-color:rgba(232,53,79,.5);color:#ffb3c0;}
+
+  .status-card{
+    border-radius:16px;padding:16px;margin-bottom:14px;font-size:14.5px;line-height:1.55;
+    border:1px solid var(--glass-border);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  }
+  .status-card p{margin:8px 0 0;}
+  .status-card-ready{background:rgba(70,200,120,.14);border-color:rgba(70,200,120,.4);}
+  .status-card-pending{background:rgba(232,53,79,.1);border-color:rgba(232,53,79,.35);}
+
   .story-overlay{
     position:fixed;inset:0;z-index:50;background:#000;
     display:flex;flex-direction:column;align-items:center;justify-content:center;
@@ -413,7 +432,7 @@ let history = [];
    3. Copy the ID it shows you and send it to me (Claude) so I can
       bake it permanently into KVDB_BUCKET below and re-send the
       file — after that, every future edit is instantly shared. */
-const ADMIN_PASSWORD = "omad2026";
+const ADMIN_PASSWORD = "Omad2026";
 const KVDB_BUCKET = ""; // <-- after first setup, paste your bucket ID here (see instructions above)
 const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7"; // used only for visa-check photo uploads
 
@@ -429,6 +448,13 @@ function notifyAdminTelegram(text){
   fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`, {
     method:"POST", headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, text })
+  }).catch(()=>{});
+}
+function notifyAdminTelegramPhoto(photoUrl, caption){
+  if(!BOT_TOKEN || !ADMIN_CHAT_ID) return;
+  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
+    method:"POST", headers:{ "Content-Type":"application/json" },
+    body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, photo: photoUrl, caption })
   }).catch(()=>{});
 }
 let logoTapCount = 0;
@@ -500,13 +526,33 @@ async function uploadToImgbb(file){
 async function fetchVisaSubmissions(){ return await kvGetJSON("visa_submissions", []); }
 async function addVisaSubmission(phone, imageUrl){
   const list = await fetchVisaSubmissions();
-  list.unshift({ id: Date.now(), phone, imageUrl, date: new Date().toLocaleString("uz-UZ") });
-  return await kvSetJSON("visa_submissions", list);
+  const id = Date.now();
+  list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"pending" });
+  await kvSetJSON("visa_submissions", list);
+  return id;
 }
 async function deleteVisaSubmission(id){
   const list = await fetchVisaSubmissions();
   const filtered = list.filter(n => n.id !== id);
   return await kvSetJSON("visa_submissions", filtered);
+}
+async function updateVisaStatus(id, status){
+  const list = await fetchVisaSubmissions();
+  const item = list.find(n => n.id === id);
+  if(item) item.status = status;
+  return await kvSetJSON("visa_submissions", list);
+}
+function getMyVisaIds(){ try{ return JSON.parse(localStorage.getItem("omad_my_visa_ids")||"[]"); }catch(e){ return []; } }
+function addMyVisaId(id){
+  const ids = getMyVisaIds();
+  ids.push(id);
+  try{ localStorage.setItem("omad_my_visa_ids", JSON.stringify(ids)); }catch(e){}
+}
+function getSeenVisaStatuses(){ try{ return JSON.parse(localStorage.getItem("omad_seen_visa_status")||"{}"); }catch(e){ return {}; } }
+function setSeenVisaStatus(id, status){
+  const seen = getSeenVisaStatuses();
+  seen[id] = status;
+  try{ localStorage.setItem("omad_seen_visa_status", JSON.stringify(seen)); }catch(e){}
 }
 
 /* ---------------- TRANSLATIONS ---------------- */
@@ -584,6 +630,12 @@ const T = {
     submitSuccess:"So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.",
     submitFail:"Yuborishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko'ring.",
     helpFieldLabel:"Fikr-mulohazangiz",
+    myVisaStatus:"So'rovim holati",
+    statusReadyTitle:"Natija tayyor",
+    statusReadyText:"So'rovingiz bo'yicha natija tayyor. Batafsil ma'lumot uchun quyidagi aloqa vositalaridan biri orqali biz bilan bog'laning.",
+    statusPendingTitle:"Hali tayyor emas",
+    statusPendingText:"So'rovingiz hali ko'rib chiqilmoqda, iltimos, biroz kuting. Xohlasangiz, Sankt-Peterburgdagi O'zbekiston Respublikasi Bosh Konsulligining rasmiy Telegram guruhiga murojaat qilishingiz yoki ular bilan uchrashuv so'rashingiz mumkin.",
+    noVisaRequest:"Sizda hali yuborilgan so'rov mavjud emas.",
     langName:"O'zbek tili"
   },
   ru:{
@@ -659,6 +711,12 @@ const T = {
     submitSuccess:"Ваша заявка принята. Мы свяжемся с вами в ближайшее время.",
     submitFail:"Произошла ошибка при отправке. Проверьте подключение к интернету и повторите попытку.",
     helpFieldLabel:"Ваш отзыв",
+    myVisaStatus:"Статус моей заявки",
+    statusReadyTitle:"Результат готов",
+    statusReadyText:"Результат по вашей заявке готов. За подробностями обратитесь к нам одним из способов связи ниже.",
+    statusPendingTitle:"Пока не готово",
+    statusPendingText:"Ваша заявка ещё рассматривается, пожалуйста, подождите. При желании вы можете обратиться в официальную Telegram-группу Генерального консульства Республики Узбекистан в Санкт-Петербурге или запросить встречу.",
+    noVisaRequest:"У вас пока нет отправленных заявок.",
     langName:"Русский"
   },
   en:{
@@ -734,6 +792,12 @@ const T = {
     submitSuccess:"Your request has been received. We will contact you shortly.",
     submitFail:"An error occurred while sending. Please check your internet connection and try again.",
     helpFieldLabel:"Your Feedback",
+    myVisaStatus:"My Request Status",
+    statusReadyTitle:"Result Ready",
+    statusReadyText:"The result of your request is ready. Please contact us using one of the options below for further details.",
+    statusPendingTitle:"Not Ready Yet",
+    statusPendingText:"Your request is still being reviewed — please wait a little longer. If you wish, you may contact the official Telegram group of the Consulate General of the Republic of Uzbekistan in Saint Petersburg, or request a meeting.",
+    noVisaRequest:"You have not submitted any requests yet.",
     langName:"English"
   }
 };
@@ -851,6 +915,7 @@ function screenHTML(name, opts){
     case "admin": return adminScreen();
     case "news": return newsScreen();
     case "vizaSubmitForm": return vizaSubmitFormScreen();
+    case "myVisaStatus": return myVisaStatusScreen();
     case "aviaMenu": return aviaMenuScreen();
     case "tourServices": return tourServicesScreen();
     case "cityStep": return cityStepScreen(opts);
@@ -1031,6 +1096,7 @@ function vizaScreen(){
       <a class="glass-btn" href="${VISA_LINK}">${iconCircle(ICONS.visa)}<span class="label">${t('vizaCheck')}</span></a>
       <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
       <button class="glass-btn glass-btn-red" data-go="vizaSubmitForm">${iconCircle(ICONS.visa)}<span class="label">${t('vizaSubmitBtn')}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-go="myVisaStatus">${iconCircle(ICONS.bell)}<span class="label">${t('myVisaStatus')}</span><span class="arrow">→</span></button>
     </div>
     <h2 class="title" style="margin-top:20px;">${t('vizaExperts')}</h2>
     <div class="list-col">
@@ -1085,6 +1151,14 @@ function dropzoneHTML(prefix, label){
         <button type="button" class="upload-remove" id="${prefix}RemoveBtn">✕</button>
       </div>
     </div>`;
+}
+
+function myVisaStatusScreen(){
+  return `<div class="screen active">
+    ${topbar(true)}
+    <h2 class="title">${t('myVisaStatus')}</h2>
+    <div id="myVisaStatusContainer"><div class="footer-note">${t('loading')}</div></div>
+  </div>`;
 }
 
 function vizaSubmitFormScreen(){
@@ -1318,12 +1392,16 @@ function bindEvents(name, opts){
   }
 
   if(name==="home"){
-    fetchNewsList().then(list=>{
+    Promise.all([fetchNewsList(), fetchVisaSubmissions()]).then(([list, visaList])=>{
       try{ localStorage.setItem("omad_news_cache_count", String(list.length)); }catch(e){}
-      const unread = Math.max(0, list.length - getNewsSeenCount());
+      const newsUnread = Math.max(0, list.length - getNewsSeenCount());
+      const myIds = getMyVisaIds();
+      const seenStatuses = getSeenVisaStatuses();
+      const visaReadyUnseen = visaList.filter(n => myIds.includes(n.id) && n.status === "ready" && seenStatuses[n.id] !== "ready").length;
+      const total = newsUnread + visaReadyUnseen;
       const badge = document.getElementById("newsBadge");
       if(badge){
-        if(unread>0){ badge.textContent = unread; badge.style.display = "flex"; }
+        if(total>0){ badge.textContent = total; badge.style.display = "flex"; }
         else{ badge.style.display = "none"; }
       }
     });
@@ -1359,6 +1437,35 @@ function bindEvents(name, opts){
     });
   }
 
+  if(name==="myVisaStatus"){
+    const myIds = getMyVisaIds();
+    const c = document.getElementById("myVisaStatusContainer");
+    if(!myIds.length){
+      c.innerHTML = `<div class="section-text">${t('noVisaRequest')}</div>`;
+    } else {
+      fetchVisaSubmissions().then(list=>{
+        const mine = list.filter(n => myIds.includes(n.id));
+        if(!mine.length){ c.innerHTML = `<div class="section-text">${t('noVisaRequest')}</div>`; return; }
+        c.innerHTML = mine.map(n=>{
+          setSeenVisaStatus(n.id, n.status);
+          if(n.status === "ready"){
+            return `<div class="status-card status-card-ready">
+              <b>${t('statusReadyTitle')}</b>
+              <p>${t('statusReadyText')}</p>
+              <span class="footer-note" style="margin:0;">${n.date}</span>
+            </div>`;
+          }
+          return `<div class="status-card status-card-pending">
+            <b>${t('statusPendingTitle')}</b>
+            <p>${t('statusPendingText')}</p>
+            <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
+            <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
+          </div>`;
+        }).join("");
+      });
+    }
+  }
+
   if(name==="vizaSubmitForm"){
     const dz = wireDropzone("viza");
 
@@ -1381,8 +1488,9 @@ function bindEvents(name, opts){
       btn.disabled = true; btn.textContent = t('loading');
       try{
         const url = await uploadToImgbb(file);
-        await addVisaSubmission(phone, url); // always cached locally even if the shared bucket isn't set up yet
-        notifyAdminTelegram(`Sizda viza bo'yicha tekshiruv bildirishnomasi keldi, ko'rib chiqing.\nTelefon: ${phone}`);
+        const newId = await addVisaSubmission(phone, url); // always cached locally even if the shared bucket isn't set up yet
+        addMyVisaId(newId);
+        notifyAdminTelegramPhoto(url, `Viza bo'yicha tekshiruv so'rovi keldi, ko'rib chiqing.\nTelefon: ${phone}`);
         status.textContent = t('submitSuccess');
         setTimeout(()=> goHome(), 1400);
       }catch(err){
@@ -1454,11 +1562,28 @@ function bindEvents(name, opts){
         const c = document.getElementById("adminVisaList");
         if(!c) return;
         if(!list.length){ c.innerHTML = `<div class="footer-note">Hozircha so'rovlar yo'q</div>`; return; }
-        c.innerHTML = list.map(n => `<div class="admin-row"><span class="grow"><b>${n.phone}</b><br><span style="opacity:.7;">${n.date}</span></span><a class="view-btn" href="${n.imageUrl}" target="_blank">Ko'rish</a><button class="del-btn" data-visaid="${n.id}">O'chirish</button></div>`).join("");
+        c.innerHTML = list.map(n => `
+          <div class="admin-row admin-row-visa">
+            <div class="admin-row-top">
+              <span class="grow"><a href="${telHref(n.phone)}" class="admin-phone-link">${n.phone}</a><br><span style="opacity:.7;">${n.date}</span></span>
+              <a class="view-btn" href="${n.imageUrl}" target="_blank">Ko'rish</a>
+              <button class="del-btn" data-visaid="${n.id}">O'chirish</button>
+            </div>
+            <div class="admin-status-row">
+              <button class="status-btn status-ready ${n.status==='ready'?'active':''}" data-statusid="${n.id}" data-status="ready">Tayyor</button>
+              <button class="status-btn status-pending ${n.status!=='ready'?'active':''}" data-statusid="${n.id}" data-status="pending">Hali tayyor emas</button>
+            </div>
+          </div>`).join("");
         c.querySelectorAll("[data-visaid]").forEach(b=>{
           b.addEventListener("click", async ()=>{
             b.textContent = "...";
             await deleteVisaSubmission(parseInt(b.dataset.visaid));
+            renderAdminVisa();
+          });
+        });
+        c.querySelectorAll("[data-statusid]").forEach(b=>{
+          b.addEventListener("click", async ()=>{
+            await updateVisaStatus(parseInt(b.dataset.statusid), b.dataset.status);
             renderAdminVisa();
           });
         });
