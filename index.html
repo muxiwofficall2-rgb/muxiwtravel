@@ -433,7 +433,7 @@ let history = [];
       bake it permanently into KVDB_BUCKET below and re-send the
       file — after that, every future edit is instantly shared. */
 const ADMIN_PASSWORD = "omad2026";
-const KVDB_BUCKET = ""; // <-- after first setup, paste your bucket ID here (see instructions above)
+const KVDB_BUCKET = "EF2FFoE8tQX1FMenfGZdnK"; // permanently set — shared across every visitor/device now
 const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7"; // used only for visa-check photo uploads
 
 /* Telegram bot notification — fires when a visa-check submission comes in.
@@ -441,7 +441,7 @@ const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7"; // used only for visa-
    can view it), since there is no backend to hide it behind. It can only
    send messages (it has no other permissions), and you can regenerate/revoke
    it anytime via @BotFather in Telegram if it's ever misused. */
-const BOT_TOKEN = "8564514766:AAEXi5C6MzvB4466QI3e1LKJHDcwjwx5RX4";
+const BOT_TOKEN = "8564514766:AAGhmwlDMf1N8C183Qf-u55OK25ZikluSEQ";
 const ADMIN_CHAT_ID = "7359558983";
 function notifyAdminTelegram(text){
   if(!BOT_TOKEN || !ADMIN_CHAT_ID) return;
