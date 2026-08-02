@@ -11,6 +11,7 @@ export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET,PUT,POST,OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
+  res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, max-age=0");
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -25,7 +26,7 @@ export default async function handler(req, res) {
 
   try {
     if (req.method === "GET") {
-      const r = await fetch(url);
+      const r = await fetch(url, { cache: "no-store" });
       if (r.status === 404) return res.status(404).end();
       if (!r.ok) return res.status(502).json({ error: "upstream error" });
       const text = await r.text();
@@ -36,7 +37,7 @@ export default async function handler(req, res) {
     if (req.method === "PUT" || req.method === "POST") {
       let body = req.body;
       if (typeof body !== "string") body = JSON.stringify(body);
-      const r = await fetch(url, { method: "PUT", body });
+      const r = await fetch(url, { method: "PUT", body, cache: "no-store" });
       if (!r.ok) return res.status(502).json({ error: "upstream error" });
       return res.status(200).json({ ok: true });
     }
