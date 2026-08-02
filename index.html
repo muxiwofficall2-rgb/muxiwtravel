@@ -517,10 +517,27 @@ async function kvGetJSON(key, fallback){
 }
 async function kvSetJSON(key, value){
   kvCacheSet(key, value); // always keep a local copy, so nothing is ever silently lost
-  try{
-    const res = await fetchWithRetry(`/api/kv?key=${key}`, { method:"PUT", body: JSON.stringify(value) });
-    return res.ok;
-  }catch(e){ return false; }
+  const serialized = JSON.stringify(value);
+  for(let attempt=0; attempt<3; attempt++){
+    try{
+      const res = await fetchWithRetry(`/api/kv?key=${key}`, {
+        method:"PUT",
+        headers:{ "Content-Type":"application/json" },
+        body: serialized
+      }, 2);
+      if(res.ok){
+        try{
+          const verifyRes = await fetchWithRetry(`/api/kv?key=${key}`, {}, 2);
+          if(verifyRes.ok){
+            const verifyText = await verifyRes.text();
+            if(verifyText === serialized) return true; // confirmed: what we wrote is what's actually stored
+          }
+        }catch(e){}
+      }
+    }catch(e){}
+    await new Promise(r=> setTimeout(r, 500));
+  }
+  return false; // could not confirm the write actually persisted
 }
 
 /* ---- News list ---- */
@@ -560,8 +577,8 @@ async function addVisaSubmission(phone, imageUrl){
   const list = await fetchVisaSubmissions();
   const id = Date.now();
   list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"new" });
-  await kvSetJSON("visa_submissions", list);
-  return id;
+  const saved = await kvSetJSON("visa_submissions", list);
+  return { id, saved };
 }
 async function deleteVisaSubmission(id){
   const list = await fetchVisaSubmissions();
@@ -1550,11 +1567,19 @@ function bindEvents(name, opts){
       btn.disabled = true; btn.textContent = t('loading');
       try{
         const url = await uploadToImgbb(file);
-        const newId = await addVisaSubmission(phone, url); // always cached locally even if the shared bucket isn't set up yet
+        const { id: newId, saved } = await addVisaSubmission(phone, url);
         addMyVisaId(newId);
-        notifyAdminTelegramPhoto(url, `Viza bo'yicha tekshiruv so'rovi keldi, ko'rib chiqing.\nTelefon: ${phone}`, newId);
-        status.textContent = t('submitSuccess');
-        setTimeout(()=> goHome(), 1400);
+        const caption = `Viza bo'yicha tekshiruv so'rovi keldi, ko'rib chiqing.\nTelefon: ${phone}`;
+        if(saved){
+          notifyAdminTelegramPhoto(url, caption, newId); // buttons will work — the record is confirmed saved
+          status.textContent = t('submitSuccess');
+          setTimeout(()=> goHome(), 1400);
+        } else {
+          // couldn't confirm the shared record was saved — don't send buttons that wouldn't work
+          notifyAdminTelegramPhoto(url, caption + "\n\n⚠️ Diqqat: tugmalar ishlamasligi mumkin, mijozga qo'lda qo'ng'iroq qiling.", null);
+          status.textContent = t('submitSuccess');
+          setTimeout(()=> goHome(), 1400);
+        }
       }catch(err){
         status.textContent = t('submitFail');
         btn.disabled = false; btn.textContent = t('send');
