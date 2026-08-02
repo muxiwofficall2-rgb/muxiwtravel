@@ -1284,6 +1284,11 @@ function adminScreen(){
     <button class="primary-btn" id="newsAddBtn" style="margin-bottom:14px;">Yangilik qo'shish</button>
     <div class="footer-note" id="newsAddStatus" style="min-height:16px;"></div>
     <div id="adminNewsList"><div class="footer-note">${t('loading')}</div></div>
+
+    <h2 class="title" style="margin-top:22px;">Xavfli hudud</h2>
+    <div class="section-text" style="border-color:rgba(232,53,79,.4);">Bu tugma barcha eski/sinov viza so'rovlarini butunlay o'chiradi. Faqat sinov ma'lumotlaridan tozalash uchun ishlating — haqiqiy mijoz so'rovlari kelgandan so'ng bosmang.</div>
+    <button class="primary-btn" id="resetVisaBtn" style="background:#8a1c30;">Eski viza so'rovlarini tozalash</button>
+    <div class="footer-note" id="resetVisaStatus" style="min-height:16px;"></div>
   </div>`;
 }
 
@@ -1502,7 +1507,7 @@ function bindEvents(name, opts){
               <b>${t('statusReadyTitle')}</b>
               <p>${t('statusReadyText')}</p>
               <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
-              <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
+              <span class="footer-note" style="margin:6px 0 0;">${n.date} · ID: ${n.id}</span>
             </div>`;
           }
           if(n.status === "pending"){
@@ -1510,13 +1515,13 @@ function bindEvents(name, opts){
               <b>${t('statusPendingTitle')}</b>
               <p>${t('statusPendingText')}</p>
               <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
-              <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
+              <span class="footer-note" style="margin:6px 0 0;">${n.date} · ID: ${n.id}</span>
             </div>`;
           }
           return `<div class="status-card status-card-new">
             <b>${t('statusNewTitle')}</b>
             <p>${t('statusNewText')}</p>
-            <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
+            <span class="footer-note" style="margin:6px 0 0;">${n.date} · ID: ${n.id}</span>
           </div>`;
         }).join("");
       });
@@ -1599,6 +1604,16 @@ function bindEvents(name, opts){
       }
       btn.disabled = false; btn.textContent = "Yangilik qo'shish";
       renderAdminNews();
+    });
+
+    document.getElementById("resetVisaBtn").addEventListener("click", async ()=>{
+      if(!confirm("Barcha eski viza so'rovlari butunlay o'chiriladi. Davom etasizmi?")) return;
+      const btn = document.getElementById("resetVisaBtn");
+      const status = document.getElementById("resetVisaStatus");
+      btn.disabled = true; btn.textContent = "Tozalanmoqda...";
+      const ok = await kvSetJSON("visa_submissions", []);
+      status.textContent = ok ? "Tozalandi. Endi faqat yangi so'rovlar ko'rinadi." : "Xatolik yuz berdi, qayta urinib ko'ring.";
+      btn.disabled = false; btn.textContent = "Eski viza so'rovlarini tozalash";
     });
   }
 }
