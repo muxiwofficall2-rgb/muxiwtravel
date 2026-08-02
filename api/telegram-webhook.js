@@ -32,14 +32,34 @@ export default async function handler(req, res) {
       const [, idStr, status] = cq.data.split(":");
       const id = parseInt(idStr, 10);
 
-      const listRes = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`);
+      const listRes = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, { cache: "no-store" });
       const list = listRes.ok ? await listRes.json() : [];
       const item = list.find((n) => n.id === id);
-      if (item) item.status = status;
-      await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, {
+
+      if (!item) {
+        await tg("answerCallbackQuery", {
+          callback_query_id: cq.id,
+          text: "Xatolik: bu so'rov bazada topilmadi (eski xabar bo'lishi mumkin).",
+          show_alert: true,
+        });
+        return res.status(200).end();
+      }
+
+      item.status = status;
+      const putRes = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, {
         method: "PUT",
         body: JSON.stringify(list),
+        cache: "no-store",
       });
+
+      if (!putRes.ok) {
+        await tg("answerCallbackQuery", {
+          callback_query_id: cq.id,
+          text: "Xatolik: saqlashda muammo yuz berdi, qayta urinib ko'ring.",
+          show_alert: true,
+        });
+        return res.status(200).end();
+      }
 
       await tg("answerCallbackQuery", {
         callback_query_id: cq.id,
