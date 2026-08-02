@@ -518,26 +518,14 @@ async function kvGetJSON(key, fallback){
 async function kvSetJSON(key, value){
   kvCacheSet(key, value); // always keep a local copy, so nothing is ever silently lost
   const serialized = JSON.stringify(value);
-  for(let attempt=0; attempt<3; attempt++){
-    try{
-      const res = await fetchWithRetry(`/api/kv?key=${key}`, {
-        method:"PUT",
-        headers:{ "Content-Type":"application/json" },
-        body: serialized
-      }, 2);
-      if(res.ok){
-        try{
-          const verifyRes = await fetchWithRetry(`/api/kv?key=${key}`, {}, 2);
-          if(verifyRes.ok){
-            const verifyText = await verifyRes.text();
-            if(verifyText === serialized) return true; // confirmed: what we wrote is what's actually stored
-          }
-        }catch(e){}
-      }
-    }catch(e){}
-    await new Promise(r=> setTimeout(r, 500));
-  }
-  return false; // could not confirm the write actually persisted
+  try{
+    const res = await fetchWithRetry(`/api/kv?key=${key}`, {
+      method:"PUT",
+      headers:{ "Content-Type":"application/json" },
+      body: serialized
+    }, 3);
+    return res.ok;
+  }catch(e){ return false; }
 }
 
 /* ---- News list ---- */
