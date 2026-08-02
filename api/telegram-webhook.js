@@ -20,6 +20,15 @@ async function tg(method, payload) {
   }).catch(() => {});
 }
 
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fetchVisaList() {
+  const r = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, { cache: "no-store" });
+  return r.ok ? await r.json() : [];
+}
+
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).end(); // Telegram just needs a 200
@@ -32,9 +41,16 @@ export default async function handler(req, res) {
       const [, idStr, status] = cq.data.split(":");
       const id = parseInt(idStr, 10);
 
-      const listRes = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, { cache: "no-store" });
-      const list = listRes.ok ? await listRes.json() : [];
-      const item = list.find((n) => n.id === id);
+      // A submission created moments ago might not have fully propagated yet
+      // in rare cases — retry a few times with short waits before giving up.
+      let list = [];
+      let item = null;
+      for (let i = 0; i < 4; i++) {
+        list = await fetchVisaList();
+        item = list.find((n) => n.id === id);
+        if (item) break;
+        await sleep(700);
+      }
 
       if (!item) {
         await tg("answerCallbackQuery", {
