@@ -5,11 +5,11 @@
 // One-time setup (only ever needs to be done once): visit this URL once in
 // any browser, replacing YOUR_DOMAIN with this site's real Vercel domain:
 //
-//   https://api.telegram.org/bot8564514766:AAGhmwlDMf1N8C183Qf-u55OK25ZikluSEQ/setWebhook?url=https://YOUR_DOMAIN/api/telegram-webhook
+//   https://api.telegram.org/bot8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc/setWebhook?url=https://YOUR_DOMAIN/api/telegram-webhook
 //
 // Telegram will reply {"ok":true,"result":true,...} if it worked.
 
-const BOT_TOKEN = "8564514766:AAGhmwlDMf1N8C183Qf-u55OK25ZikluSEQ";
+const BOT_TOKEN = "8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc";
 const BUCKET = "EF2FFoE8tQX1FMenfGZdnK";
 
 async function tg(method, payload) {
