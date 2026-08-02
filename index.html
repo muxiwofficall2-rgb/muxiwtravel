@@ -317,6 +317,10 @@
   .admin-row-visa{flex-direction:column;align-items:stretch;gap:8px;}
   .admin-row-top{display:flex;align-items:center;gap:10px;}
   .admin-phone-link{color:var(--text);text-decoration:underline;font-weight:700;}
+  .new-badge{
+    background:rgba(255,193,7,.25);color:#ffcf4d;border:1px solid rgba(255,193,7,.5);
+    font-size:10px;font-weight:800;border-radius:8px;padding:2px 6px;margin-left:4px;
+  }
   .admin-status-row{display:flex;gap:8px;}
   .status-btn{
     flex:1;border:1px solid var(--glass-border);background:transparent;color:var(--text-dim);
@@ -332,6 +336,7 @@
   .status-card p{margin:8px 0 0;}
   .status-card-ready{background:rgba(70,200,120,.14);border-color:rgba(70,200,120,.4);}
   .status-card-pending{background:rgba(232,53,79,.1);border-color:rgba(232,53,79,.35);}
+  .status-card-new{background:rgba(255,193,7,.1);border-color:rgba(255,193,7,.35);}
 
   .inapp-warning{
     background:rgba(255,193,7,.14);border:1px solid rgba(255,193,7,.45);
@@ -554,7 +559,7 @@ async function fetchVisaSubmissions(){ return await kvGetJSON("visa_submissions"
 async function addVisaSubmission(phone, imageUrl){
   const list = await fetchVisaSubmissions();
   const id = Date.now();
-  list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"pending" });
+  list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"new" });
   await kvSetJSON("visa_submissions", list);
   return id;
 }
@@ -658,6 +663,8 @@ const T = {
     submitFail:"Yuborishda xatolik yuz berdi. Internet aloqasini tekshirib, qayta urinib ko'ring.",
     helpFieldLabel:"Fikr-mulohazangiz",
     myVisaStatus:"So'rovim holati",
+    statusNewTitle:"Ko'rib chiqilmoqda",
+    statusNewText:"So'rovingiz mutaxassisimizga yuborildi. Iltimos, ko'rib chiqib javob berilishini kuting.",
     statusReadyTitle:"Natija tayyor",
     statusReadyText:"Anketangiz bo'yicha natija tayyor. Vizani olish uchun O'zbekiston Respublikasi Bosh Konsulligiga shaxsan tashrif buyurib, konsul bilan uchrashishingiz kerak. Eslatib o'tamiz: bizning xizmatimiz faqat anketa to'ldirishdan iborat — vizaning o'zini faqat Konsullikning o'zi beradi.",
     statusPendingTitle:"Hali tayyor emas",
@@ -742,6 +749,8 @@ const T = {
     submitFail:"Произошла ошибка при отправке. Проверьте подключение к интернету и повторите попытку.",
     helpFieldLabel:"Ваш отзыв",
     myVisaStatus:"Статус моей заявки",
+    statusNewTitle:"На рассмотрении",
+    statusNewText:"Ваша заявка отправлена нашему специалисту. Пожалуйста, дождитесь рассмотрения и ответа.",
     statusReadyTitle:"Результат готов",
     statusReadyText:"Результат по вашей анкете готов. Для получения визы вам необходимо лично посетить Генеральное консульство Республики Узбекистан и встретиться с консулом. Обращаем внимание: наша услуга заключается только в заполнении анкеты — саму визу выдаёт исключительно Консульство.",
     statusPendingTitle:"Пока не готово",
@@ -826,6 +835,8 @@ const T = {
     submitFail:"An error occurred while sending. Please check your internet connection and try again.",
     helpFieldLabel:"Your Feedback",
     myVisaStatus:"My Request Status",
+    statusNewTitle:"Under Review",
+    statusNewText:"Your request has been sent to our specialist. Please wait for it to be reviewed and answered.",
     statusReadyTitle:"Result Ready",
     statusReadyText:"The result of your application is ready. To receive your visa, please visit the Consulate General of the Republic of Uzbekistan in person and meet with the consul. Please note: our service covers only the completion of the application form — the visa itself is issued solely by the Consulate.",
     statusPendingTitle:"Not Ready Yet",
@@ -1497,10 +1508,17 @@ function bindEvents(name, opts){
               <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
             </div>`;
           }
-          return `<div class="status-card status-card-pending">
-            <b>${t('statusPendingTitle')}</b>
-            <p>${t('statusPendingText')}</p>
-            <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
+          if(n.status === "pending"){
+            return `<div class="status-card status-card-pending">
+              <b>${t('statusPendingTitle')}</b>
+              <p>${t('statusPendingText')}</p>
+              <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" style="margin-top:10px;">${iconCircle(ICONS.telegram)}<span class="label">${t('vizaGroup')}</span></a>
+              <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
+            </div>`;
+          }
+          return `<div class="status-card status-card-new">
+            <b>${t('statusNewTitle')}</b>
+            <p>${t('statusNewText')}</p>
             <span class="footer-note" style="margin:6px 0 0;">${n.date}</span>
           </div>`;
         }).join("");
@@ -1594,13 +1612,13 @@ function bindEvents(name, opts){
         c.innerHTML = list.map(n => `
           <div class="admin-row admin-row-visa">
             <div class="admin-row-top">
-              <span class="grow"><a href="${telHref(n.phone)}" class="admin-phone-link">${n.phone}</a><br><span style="opacity:.7;">${n.date}</span></span>
+              <span class="grow"><a href="${telHref(n.phone)}" class="admin-phone-link">${n.phone}</a><br><span style="opacity:.7;">${n.date}</span>${!n.status || n.status==='new' ? ` <span class="new-badge">Yangi</span>` : ""}</span>
               <a class="view-btn" href="${n.imageUrl}" target="_blank">Ko'rish</a>
               <button class="del-btn" data-visaid="${n.id}">O'chirish</button>
             </div>
             <div class="admin-status-row">
               <button class="status-btn status-ready ${n.status==='ready'?'active':''}" data-statusid="${n.id}" data-status="ready">Tayyor</button>
-              <button class="status-btn status-pending ${n.status!=='ready'?'active':''}" data-statusid="${n.id}" data-status="pending">Hali tayyor emas</button>
+              <button class="status-btn status-pending ${n.status==='pending'?'active':''}" data-statusid="${n.id}" data-status="pending">Hali tayyor emas</button>
             </div>
           </div>`).join("");
         c.querySelectorAll("[data-visaid]").forEach(b=>{
