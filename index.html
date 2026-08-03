@@ -524,8 +524,11 @@ async function kvSetJSON(key, value){
       headers:{ "Content-Type":"application/json" },
       body: serialized
     }, 3);
-    return res.ok;
-  }catch(e){ return false; }
+    if(res.ok) return { ok:true, detail:"" };
+    let bodyText = "";
+    try{ bodyText = await res.text(); }catch(e){}
+    return { ok:false, detail:`HTTP ${res.status} ${bodyText}`.slice(0,150) };
+  }catch(e){ return { ok:false, detail:`network: ${e && e.message ? e.message : e}`.slice(0,150) }; }
 }
 
 /* ---- News list ---- */
@@ -565,8 +568,8 @@ async function addVisaSubmission(phone, imageUrl){
   const list = await fetchVisaSubmissions();
   const id = Date.now();
   list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"new" });
-  const saved = await kvSetJSON("visa_submissions", list);
-  return { id, saved };
+  const result = await kvSetJSON("visa_submissions", list);
+  return { id, saved: result.ok, detail: result.detail };
 }
 async function deleteVisaSubmission(id){
   const list = await fetchVisaSubmissions();
@@ -1555,19 +1558,17 @@ function bindEvents(name, opts){
       btn.disabled = true; btn.textContent = t('loading');
       try{
         const url = await uploadToImgbb(file);
-        const { id: newId, saved } = await addVisaSubmission(phone, url);
+        const { id: newId, saved, detail } = await addVisaSubmission(phone, url);
         addMyVisaId(newId);
         const caption = `Viza bo'yicha tekshiruv so'rovi keldi, ko'rib chiqing.\nTelefon: ${phone}`;
         if(saved){
           notifyAdminTelegramPhoto(url, caption, newId); // buttons will work — the record is confirmed saved
-          status.textContent = t('submitSuccess');
-          setTimeout(()=> goHome(), 1400);
         } else {
-          // couldn't confirm the shared record was saved — don't send buttons that wouldn't work
-          notifyAdminTelegramPhoto(url, caption + "\n\n⚠️ Diqqat: tugmalar ishlamasligi mumkin, mijozga qo'lda qo'ng'iroq qiling.", null);
-          status.textContent = t('submitSuccess');
-          setTimeout(()=> goHome(), 1400);
+          // couldn't save the shared record — don't send buttons that wouldn't work, and show the exact reason
+          notifyAdminTelegramPhoto(url, caption + `\n\n⚠️ Diqqat: tugmalar ishlamaydi, mijozga qo'lda qo'ng'iroq qiling.\nSabab: ${detail || "noma'lum"}`, null);
         }
+        status.textContent = t('submitSuccess');
+        setTimeout(()=> goHome(), 1400);
       }catch(err){
         status.textContent = t('submitFail');
         btn.disabled = false; btn.textContent = t('send');
@@ -1624,8 +1625,8 @@ function bindEvents(name, opts){
       const btn = document.getElementById("resetVisaBtn");
       const status = document.getElementById("resetVisaStatus");
       btn.disabled = true; btn.textContent = "Tozalanmoqda...";
-      const ok = await kvSetJSON("visa_submissions", []);
-      status.textContent = ok ? "Tozalandi. Endi faqat yangi so'rovlar ko'rinadi." : "Xatolik yuz berdi, qayta urinib ko'ring.";
+      const result = await kvSetJSON("visa_submissions", []);
+      status.textContent = result.ok ? "Tozalandi. Endi faqat yangi so'rovlar ko'rinadi." : `Xatolik: ${result.detail}`;
       btn.disabled = false; btn.textContent = "Eski viza so'rovlarini tozalash";
     });
   }
