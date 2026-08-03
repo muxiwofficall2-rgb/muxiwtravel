@@ -1,6 +1,7 @@
 // /api/telegram-webhook.js — receives updates from Telegram when the admin
 // taps the "Tayyor" / "Hali tayyor emas" inline buttons under a visa-check
-// notification message, and updates that request's status in kvdb.io.
+// notification message, and updates that request's status in Upstash Redis
+// (connected via Vercel Storage — same database used by /api/kv.js).
 //
 // One-time setup (only ever needs to be done once): visit this URL once in
 // any browser, replacing YOUR_DOMAIN with this site's real Vercel domain:
@@ -10,7 +11,13 @@
 // Telegram will reply {"ok":true,"result":true,...} if it worked.
 
 const BOT_TOKEN = "8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc";
-const BUCKET = "EF2FFoE8tQX1FMenfGZdnK";
+
+function redisConfig() {
+  return {
+    url: process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL,
+    token: process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN,
+  };
+}
 
 async function tg(method, payload) {
   return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
@@ -25,8 +32,31 @@ function sleep(ms) {
 }
 
 async function fetchVisaList() {
-  const r = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, { cache: "no-store" });
-  return r.ok ? await r.json() : [];
+  const { url, token } = redisConfig();
+  if (!url || !token) return [];
+  const r = await fetch(`${url}/get/visa_submissions`, {
+    headers: { Authorization: `Bearer ${token}` },
+    cache: "no-store",
+  });
+  if (!r.ok) return [];
+  const data = await r.json();
+  if (!data.result) return [];
+  try {
+    return JSON.parse(data.result);
+  } catch (e) {
+    return [];
+  }
+}
+
+async function saveVisaList(list) {
+  const { url, token } = redisConfig();
+  if (!url || !token) return false;
+  const r = await fetch(`${url}/set/visa_submissions`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" },
+    body: JSON.stringify(list),
+  });
+  return r.ok;
 }
 
 export default async function handler(req, res) {
@@ -62,13 +92,9 @@ export default async function handler(req, res) {
       }
 
       item.status = status;
-      const putRes = await fetch(`https://kvdb.io/${BUCKET}/visa_submissions`, {
-        method: "PUT",
-        body: JSON.stringify(list),
-        cache: "no-store",
-      });
+      const saved = await saveVisaList(list);
 
-      if (!putRes.ok) {
+      if (!saved) {
         await tg("answerCallbackQuery", {
           callback_query_id: cq.id,
           text: "Xatolik: saqlashda muammo yuz berdi, qayta urinib ko'ring.",
