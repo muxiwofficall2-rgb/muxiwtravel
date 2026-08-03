@@ -37,8 +37,14 @@ export default async function handler(req, res) {
     if (req.method === "PUT" || req.method === "POST") {
       let body = req.body;
       if (typeof body !== "string") body = JSON.stringify(body);
+      if (Buffer.byteLength(body, "utf8") > 15000) {
+        return res.status(413).json({ error: "payload too large for kvdb (16KB limit)", size: Buffer.byteLength(body, "utf8") });
+      }
       const r = await fetch(url, { method: "PUT", body, cache: "no-store" });
-      if (!r.ok) return res.status(502).json({ error: "upstream error" });
+      if (!r.ok) {
+        const upstreamText = await r.text().catch(() => "");
+        return res.status(502).json({ error: `upstream ${r.status}`, upstream: upstreamText.slice(0, 200) });
+      }
       return res.status(200).json({ ok: true });
     }
 
