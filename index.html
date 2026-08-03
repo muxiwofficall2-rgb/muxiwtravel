@@ -533,9 +533,13 @@ async function kvSetJSON(key, value){
 
 /* ---- News list ---- */
 async function fetchNewsList(){ return await kvGetJSON("news_list", []); }
+const MAX_NEWS_ITEMS = 30;
+const MAX_VISA_ITEMS = 30;
+
 async function addNewsItem(text, imageUrl){
-  const list = await fetchNewsList();
+  let list = await fetchNewsList();
   list.unshift({ id: Date.now(), text, imageUrl: imageUrl || "", date: new Date().toLocaleDateString("uz-UZ") });
+  list = list.slice(0, MAX_NEWS_ITEMS); // keep the list small enough to always fit kvdb's 16KB limit
   return await kvSetJSON("news_list", list);
 }
 async function deleteNewsItem(id){
@@ -565,9 +569,10 @@ async function uploadToImgbb(file){
 }
 async function fetchVisaSubmissions(){ return await kvGetJSON("visa_submissions", []); }
 async function addVisaSubmission(phone, imageUrl){
-  const list = await fetchVisaSubmissions();
+  let list = await fetchVisaSubmissions();
   const id = Date.now();
   list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("uz-UZ"), status:"new" });
+  list = list.slice(0, MAX_VISA_ITEMS); // keep the list small enough to always fit kvdb's 16KB limit
   const result = await kvSetJSON("visa_submissions", list);
   return { id, saved: result.ok, detail: result.detail };
 }
