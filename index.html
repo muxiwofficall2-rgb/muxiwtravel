@@ -551,13 +551,58 @@ function getNewsSeenCount(){ try{ return parseInt(localStorage.getItem("omad_new
 function setNewsSeenCount(n){ try{ localStorage.setItem("omad_news_seen", String(n)); }catch(e){} }
 
 /* ---- Visa-check submissions ---- */
-async function uploadToImgbb(file){
-  const base64 = await new Promise((resolve, reject)=>{
-    const reader = new FileReader();
-    reader.onload = ()=> resolve(reader.result);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
+function loadImageElement(file){
+  return new Promise((resolve, reject)=>{
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(file);
+    img.onload = ()=>{ URL.revokeObjectURL(objectUrl); resolve(img); };
+    img.onerror = (e)=>{ URL.revokeObjectURL(objectUrl); reject(e); };
+    img.src = objectUrl;
   });
+}
+function drawToJpeg(img, maxDimension, quality){
+  let { width, height } = img;
+  if(width > height && width > maxDimension){
+    height = Math.round(height * (maxDimension / width));
+    width = maxDimension;
+  } else if(height > maxDimension){
+    width = Math.round(width * (maxDimension / height));
+    height = maxDimension;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width; canvas.height = height;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, width, height);
+  return canvas.toDataURL("image/jpeg", quality);
+}
+// Vercel's serverless functions hard-cap request bodies at 4.5MB. Base64
+// inflates size by ~33%, and our JSON wrapper adds a little more, so we
+// target a safe ceiling well under that limit and shrink automatically,
+// as many times as it takes, until the result actually fits — no matter
+// how large the original photo was.
+const UPLOAD_SAFE_LIMIT = 2800000; // ~2.8MB of base64 text, leaves a big safety margin
+async function uploadToImgbb(file){
+  let base64;
+  try{
+    const img = await loadImageElement(file);
+    const steps = [
+      [1600, 0.75], [1300, 0.7], [1000, 0.6], [800, 0.5], [600, 0.45], [450, 0.4]
+    ];
+    base64 = drawToJpeg(img, steps[0][0], steps[0][1]);
+    let i = 1;
+    while(base64.length > UPLOAD_SAFE_LIMIT && i < steps.length){
+      base64 = drawToJpeg(img, steps[i][0], steps[i][1]);
+      i++;
+    }
+  }catch(e){
+    // if the image can't be decoded/redrawn for any reason, fall back to the raw file
+    base64 = await new Promise((resolve, reject)=>{
+      const reader = new FileReader();
+      reader.onload = ()=> resolve(reader.result);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
   const res = await fetchWithRetry(`/api/upload-image`, {
     method:"POST",
     headers:{ "Content-Type":"application/json" },
