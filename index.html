@@ -20,6 +20,7 @@
     --plane-color:#fff;
     --shimmer-1:#e9eefb;
     --shimmer-2:#9fc4ff;
+    --ornament-color:#ffffff;
     font-family: 'Segoe UI', Roboto, Arial, sans-serif;
   }
   body.theme-light{
@@ -34,6 +35,7 @@
     --plane-color:#0c1c4d;
     --shimmer-1:#0c1c4d;
     --shimmer-2:#5c85e0;
+    --ornament-color:#0c1c4d;
   }
   *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
   html,body{margin:0;padding:0;height:100%;overflow:hidden;background:var(--bg-1);}
@@ -50,6 +52,18 @@
   #dots-canvas{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;}
 
   #app{position:relative;z-index:1;height:100vh;width:100vw;max-width:520px;margin:0 auto;display:flex;flex-direction:column;overflow:hidden;}
+  @media (min-width:900px){
+    body{ display:flex; align-items:center; justify-content:center; }
+    #app{
+      max-width:1000px; height:88vh; max-height:900px;
+      border-radius:28px; box-shadow:0 30px 80px rgba(0,0,0,.5);
+      border:1px solid var(--glass-border);
+    }
+    .home-scroll{ padding:0 6vw; }
+    .menu-list{ display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .greeting{ font-size:19px; max-width:640px; margin-left:auto; margin-right:auto; }
+    .screen:not(#appHomeScreen){ padding-left:8vw; padding-right:8vw; }
+  }
 
   .screen{
     position:absolute;inset:0;
@@ -390,18 +404,40 @@
 
   ::-webkit-scrollbar{width:5px;}
   ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.25);border-radius:10px;}
+
+  .corner-ornament{
+    position:fixed; z-index:0; pointer-events:none;
+    width:280px; height:280px; color:var(--ornament-color); opacity:.07;
+  }
+  .corner-ornament.top-left{ top:-70px; left:-70px; }
+  .corner-ornament.bottom-right{ bottom:-70px; right:-70px; transform:rotate(180deg); }
 </style>
-<script nowprocket data-noptimize="1" data-cfasync="false" data-wpfc-render="false" seraph-accel-crit="1" data-no-defer="1">
-  (function () {
-      var script = document.createElement("script");
-      script.async = 1;
-      script.src = 'https://emrldtp.com/NTU0NTEy.js?t=554512';
-      document.head.appendChild(script);
-  })();
-</script>
 </head>
 <body>
 <canvas id="dots-canvas"></canvas>
+
+<svg width="0" height="0" style="position:absolute;">
+  <defs>
+    <g id="mandala-motif">
+      <g>
+        <path d="M140 140 C168 118 182 82 168 40 C142 58 128 92 130 128 C90 118 56 96 40 60 C60 92 60 130 90 156 C56 148 24 156 4 182 C40 172 76 178 100 200" fill="none" stroke="currentColor" stroke-width="2"/>
+        <path id="petal" d="M140 140 C150 108 148 74 128 46 C104 70 98 104 108 138 C108 138 124 146 140 140 Z" fill="currentColor"/>
+      </g>
+      <use href="#petal" transform="rotate(45 140 140)"/>
+      <use href="#petal" transform="rotate(90 140 140)"/>
+      <use href="#petal" transform="rotate(135 140 140)"/>
+      <use href="#petal" transform="rotate(180 140 140)"/>
+      <use href="#petal" transform="rotate(225 140 140)"/>
+      <use href="#petal" transform="rotate(270 140 140)"/>
+      <use href="#petal" transform="rotate(315 140 140)"/>
+      <circle cx="140" cy="140" r="22" fill="none" stroke="currentColor" stroke-width="2"/>
+      <circle cx="140" cy="140" r="34" fill="none" stroke="currentColor" stroke-width="1.2"/>
+    </g>
+  </defs>
+</svg>
+<svg class="corner-ornament top-left" viewBox="0 0 280 280"><use href="#mandala-motif"/></svg>
+<svg class="corner-ornament bottom-right" viewBox="0 0 280 280"><use href="#mandala-motif"/></svg>
+
 <div id="app"></div>
 <svg class="fly-plane" viewBox="0 0 24 24"><path d="M21.5 3.5c.6 0 .9.5.7 1.1L17.4 18c-.2.6-1 .7-1.4.2l-3.1-4.3-4.3-3.1c-.5-.4-.4-1.2.2-1.4l12.7-5.9z" fill="currentColor"/><path d="M12.9 13.9L9 21l-1.3-3.5L4.2 16.2 12.9 13.9z" fill="currentColor" opacity=".8"/></svg>
 
@@ -442,7 +478,7 @@ let history = [];
    3. Copy the ID it shows you and send it to me (Claude) so I can
       bake it permanently into KVDB_BUCKET below and re-send the
       file — after that, every future edit is instantly shared. */
-const ADMIN_PASSWORD = "omad2026";
+const ADMIN_PASSWORD = "Omad_SPB_2026x9"; // rotated — change this to whatever you like whenever you want
 
 /* Telegram bot notification — fires when a visa-check submission comes in.
    NOTE: this token is visible in the page's public source code (any visitor
@@ -982,6 +1018,15 @@ const HELP_EMAIL = "omadru@bk.ru";
 
 /* ---------------- HELPERS ---------------- */
 function t(key){ return T[LANG][key] || key; }
+function escapeHtml(str){
+  if(str === null || str === undefined) return "";
+  return String(str)
+    .replace(/&/g,"&amp;")
+    .replace(/</g,"&lt;")
+    .replace(/>/g,"&gt;")
+    .replace(/"/g,"&quot;")
+    .replace(/'/g,"&#39;");
+}
 function cityName(c){ return c.name[LANG]; }
 function telHref(num){ return "tel:" + num.replace(/[^\d+]/g,""); }
 function smsHref(num, body){ return "sms:" + num.replace(/[^\d+]/g,"") + (body ? ("?body="+encodeURIComponent(body)) : ""); }
@@ -1178,7 +1223,7 @@ function tgShareHref(text){
   return `https://t.me/share/url?url=&text=${encodeURIComponent(text)}`;
 }
 function contactScreen(opts){
-  const summary = buildSummaryText().replace(/\n/g,"<br>");
+  const summary = escapeHtml(buildSummaryText()).replace(/\n/g,"<br>");
   const c = AVIA_CONTACTS;
   const bodyText = buildSummaryText();
   lastContactSummary = bodyText;
@@ -1542,7 +1587,7 @@ function bindEvents(name, opts){
       const c = document.getElementById("newsListContainer");
       if(!c) return;
       if(!list.length){ c.innerHTML = `<div class="footer-note">—</div>`; return; }
-      c.innerHTML = list.map((n,i) => `<div class="news-item" data-idx="${i}">${n.imageUrl ? `<img class="news-thumb" src="${n.imageUrl}">` : `<span class="news-thumb news-thumb-placeholder">${ICONS.megaphone}</span>`}<div class="news-row-text"><span class="news-date">${n.date}</span>${n.text}</div></div>`).join("");
+      c.innerHTML = list.map((n,i) => `<div class="news-item" data-idx="${i}">${n.imageUrl ? `<img class="news-thumb" src="${escapeHtml(n.imageUrl)}">` : `<span class="news-thumb news-thumb-placeholder">${ICONS.megaphone}</span>`}<div class="news-row-text"><span class="news-date">${escapeHtml(n.date)}</span>${escapeHtml(n.text)}</div></div>`).join("");
       c.querySelectorAll("[data-idx]").forEach(el=>{
         el.addEventListener("click", ()=> showNewsStory(newsListCache[parseInt(el.dataset.idx)]));
       });
@@ -1634,7 +1679,7 @@ function bindEvents(name, opts){
         const c = document.getElementById("adminNewsList");
         if(!c) return;
         if(!list.length){ c.innerHTML = `<div class="footer-note">Hozircha yangiliklar yo'q</div>`; return; }
-        c.innerHTML = list.map(n => `<div class="admin-row">${n.imageUrl ? `<img src="${n.imageUrl}" class="admin-row-thumb">` : ""}<span class="grow"><b>${n.date}</b> — ${n.text}</span><button class="del-btn" data-newsid="${n.id}">O'chirish</button></div>`).join("");
+        c.innerHTML = list.map(n => `<div class="admin-row">${n.imageUrl ? `<img src="${escapeHtml(n.imageUrl)}" class="admin-row-thumb">` : ""}<span class="grow"><b>${escapeHtml(n.date)}</b> — ${escapeHtml(n.text)}</span><button class="del-btn" data-newsid="${n.id}">O'chirish</button></div>`).join("");
         c.querySelectorAll("[data-newsid]").forEach(b=>{
           b.addEventListener("click", async ()=>{
             b.textContent = "...";
@@ -1688,8 +1733,8 @@ function showNewsStory(item){
   overlay.innerHTML = `
     <div class="story-progress"><div class="story-progress-bar" id="storyProgressBar"></div></div>
     <button class="story-close" id="storyCloseBtn">✕</button>
-    ${item.imageUrl ? `<img class="story-img" src="${item.imageUrl}">` : `<div class="story-noimg">${ICONS.megaphone}</div>`}
-    <div class="story-caption">${item.text}</div>
+    ${item.imageUrl ? `<img class="story-img" src="${escapeHtml(item.imageUrl)}">` : `<div class="story-noimg">${ICONS.megaphone}</div>`}
+    <div class="story-caption">${escapeHtml(item.text)}</div>
   `;
   document.body.appendChild(overlay);
   requestAnimationFrame(()=>{
