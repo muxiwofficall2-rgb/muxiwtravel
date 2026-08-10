@@ -3,14 +3,34 @@
 // notification message, and updates that request's status in Upstash Redis
 // (connected via Vercel Storage — same database used by /api/kv.js).
 //
-// One-time setup (only ever needs to be done once): visit this URL once in
-// any browser, replacing YOUR_DOMAIN with this site's real Vercel domain:
+// SECURITY:
+// 1. The bot token is read from the TELEGRAM_BOT_TOKEN environment variable
+//    (never hardcoded), for the same reason as notify-telegram.js — a token
+//    committed to a public repo gets scraped and hijacked within minutes.
+// 2. This URL is public on the internet (Telegram must be able to reach
+//    it), so anyone who finds it could otherwise POST fake button-press
+//    payloads and silently flip the status of any visa request. To stop
+//    that, Telegram lets you attach a "secret token" when you register the
+//    webhook; Telegram then includes that same secret in a header on every
+//    real request, and we reject anything that doesn't match. Set
+//    TELEGRAM_WEBHOOK_SECRET below in Vercel to any random string of your
+//    choosing, then register it with Telegram — see the one-time setup
+//    instructions below.
 //
-//   https://api.telegram.org/bot8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc/setWebhook?url=https://YOUR_DOMAIN/api/telegram-webhook
+// ---------------------------------------------------------------------
+// ONE-TIME SETUP (only ever needs to be done once, or again if you rotate
+// the secret). Replace YOUR_DOMAIN and YOUR_SECRET, then open this URL
+// once in any browser:
+//
+//   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://YOUR_DOMAIN/api/telegram-webhook&secret_token=YOUR_SECRET
 //
 // Telegram will reply {"ok":true,"result":true,...} if it worked.
+// (YOUR_SECRET must be the exact same value you set as the
+// TELEGRAM_WEBHOOK_SECRET environment variable in Vercel.)
+// ---------------------------------------------------------------------
 
-const BOT_TOKEN = "8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc";
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 function redisConfig() {
   return {
@@ -20,6 +40,7 @@ function redisConfig() {
 }
 
 async function tg(method, payload) {
+  if (!BOT_TOKEN) return;
   return fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -62,6 +83,17 @@ async function saveVisaList(list) {
 export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(200).end(); // Telegram just needs a 200
+  }
+
+  // Reject anything that doesn't carry our secret — this is what stops a
+  // random visitor (who might guess or find this URL) from forging status
+  // updates. Telegram itself always sends this header once the webhook is
+  // registered with secret_token (see setup instructions above).
+  if (WEBHOOK_SECRET) {
+    const incoming = req.headers["x-telegram-bot-api-secret-token"];
+    if (incoming !== WEBHOOK_SECRET) {
+      return res.status(401).end();
+    }
   }
 
   try {
