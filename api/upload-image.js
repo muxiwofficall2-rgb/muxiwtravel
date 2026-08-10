@@ -25,6 +25,16 @@ export const config = {
   },
 };
 
+async function fetchWithTimeout(url, opts, timeoutMs) {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...opts, signal: ctrl.signal });
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "POST,OPTIONS");
@@ -37,7 +47,14 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: "method not allowed" });
   }
   if (!IMGBB_API_KEY) {
-    return res.status(500).json({ error: "IMGBB_API_KEY Vercel muhit o'zgaruvchilarida sozlanmagan." });
+    // The single most common cause of "rasm yuklanmadi": the environment
+    // variable was never added in Vercel, or it was added but the project
+    // hasn't been redeployed since (env vars only take effect on the next
+    // deploy). We say this explicitly instead of a vague failure so it's
+    // obvious what to fix.
+    return res.status(500).json({
+      error: "IMGBB_API_KEY Vercel muhit o'zgaruvchilarida sozlanmagan yoki sozlangandan keyin qayta deploy qilinmagan.",
+    });
   }
 
   try {
@@ -53,16 +70,40 @@ export default async function handler(req, res) {
     fd.append("key", IMGBB_API_KEY);
     fd.append("image", base64Data);
 
-    const r = await fetch("https://api.imgbb.com/1/upload", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded" },
-      body: fd.toString(),
-    });
-    const data = await r.json();
-    if (data && data.data && data.data.url) {
+    let r;
+    try {
+      r = await fetchWithTimeout(
+        "https://api.imgbb.com/1/upload",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: fd.toString(),
+        },
+        25000
+      );
+    } catch (netErr) {
+      return res.status(502).json({
+        error: "imgbb bilan bog'lanib bo'lmadi: " + String(netErr && netErr.message || netErr),
+      });
+    }
+
+    let data = null;
+    try {
+      data = await r.json();
+    } catch (parseErr) {
+      return res.status(502).json({ error: "imgbb noto'g'ri javob qaytardi (HTTP " + r.status + ")" });
+    }
+
+    if (r.ok && data && data.data && data.data.url) {
       return res.status(200).json({ url: data.data.url });
     }
-    return res.status(502).json({ error: "upload failed", details: data });
+
+    // Surface imgbb's own error message (e.g. invalid key, quota, bad
+    // image) instead of a generic "upload failed" — this is what makes it
+    // possible to tell "key is wrong" apart from "network hiccup" apart
+    // from "image itself is bad" at a glance.
+    const imgbbMsg = (data && data.error && (data.error.message || data.error)) || `HTTP ${r.status}`;
+    return res.status(502).json({ error: "imgbb: " + imgbbMsg });
   } catch (e) {
     return res.status(500).json({ error: String(e) });
   }
