@@ -261,6 +261,10 @@
   .upload-meta{font-size:12px;color:var(--text-dim);}
   .upload-meta.ok{color:#3ec27a;font-weight:700;}
   .upload-meta.err{color:var(--accent-red);font-weight:700;}
+  .upload-detail{
+    display:block;font-size:11px;color:var(--text-dim);margin-top:2px;
+    line-height:1.4;word-break:break-word;font-family:ui-monospace,Consolas,monospace;
+  }
   .upload-remove{
     background:var(--accent-red);color:#fff;border:none;border-radius:50%;
     width:26px;height:26px;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1;
@@ -941,14 +945,22 @@ async function compressImage(file){
   return out;
 }
 async function uploadBase64(base64){
-  const res = await request("/api/upload-image", {
-    method:"POST", headers:{ "Content-Type":"application/json" },
-    body: JSON.stringify({ imageBase64: base64 })
-  }, { timeout:45000, attempts:2 });
+  let res;
+  try{
+    res = await request("/api/upload-image", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ imageBase64: base64 })
+    }, { timeout:45000, attempts:2 });
+  }catch(e){
+    // Fetch o'zi butunlay muvaffaqiyatsiz bo'ldi (masalan internet uzildi,
+    // yoki server umuman javob bermadi) — texnik sababini aniq ko'rsatamiz.
+    throw new Error("Tarmoq xatosi: " + String(e && e.message || e));
+  }
   let data = null;
   try{ data = await res.json(); }catch(e){}
   if(res.ok && data && data.url) return data.url;
-  throw new Error((data && data.error) || ("HTTP " + res.status));
+  const serverMsg = (data && (data.error || data.details)) ? JSON.stringify(data.error || data.details) : null;
+  throw new Error(serverMsg || ("Server javobi: HTTP " + res.status));
 }
 
 /* Fayl tanlangan zahoti siqish va yuklash boshlanadi — "Yuborish" bosilganda
@@ -974,7 +986,11 @@ function createUploader(onStatus){
     })();
     u.promise
       .then(url => { u.url = url; u.status = "done"; onStatus("done"); })
-      .catch(e => { u.status = "failed"; u.error = String(e && e.message || e); onStatus("failed"); });
+      .catch(e => {
+        u.status = "failed";
+        u.error = String(e && e.message || e);
+        onStatus("failed", u.error);
+      });
     return u.promise;
   }
   u.setFile = (file)=>{ u.file = file; start().catch(()=>{}); };
@@ -1275,6 +1291,7 @@ function dropzone(prefix, label){
         <div class="upload-info">
           <span class="fname" id="${prefix}Name"></span>
           <span class="upload-meta" id="${prefix}Meta"></span>
+          <span class="upload-detail" id="${prefix}Detail" style="display:none"></span>
           <div class="upload-bar"><span id="${prefix}Bar"></span></div>
         </div>
         <button type="button" class="upload-remove" id="${prefix}Remove" aria-label="remove">✕</button>
@@ -1549,16 +1566,29 @@ function wireDropzone(prefix){
   const thumb = document.getElementById(prefix + "Thumb");
   const nameEl = document.getElementById(prefix + "Name");
   const meta = document.getElementById(prefix + "Meta");
+  const detail = document.getElementById(prefix + "Detail");
   const bar = document.getElementById(prefix + "Bar");
   const remove = document.getElementById(prefix + "Remove");
   const err = document.getElementById(prefix + "FileErr");
 
-  const uploader = createUploader(status=>{
+  const uploader = createUploader((status, errorMsg)=>{
     box.classList.remove("ready","failed");
     meta.classList.remove("ok","err");
+    detail.style.display = "none";
     if(status === "working"){ meta.textContent = t('photoUploading'); bar.style.width = "65%"; }
     else if(status === "done"){ meta.textContent = t('photoReady'); meta.classList.add("ok"); bar.style.width = "100%"; box.classList.add("ready"); }
-    else if(status === "failed"){ meta.textContent = t('photoFailed'); meta.classList.add("err"); bar.style.width = "0"; box.classList.add("failed"); }
+    else if(status === "failed"){
+      meta.textContent = t('photoFailed');
+      meta.classList.add("err");
+      bar.style.width = "0";
+      box.classList.add("failed");
+      // Xatolikning aniq sababini ko'rsatamiz — "ishlamadi" deyish o'rniga
+      // NEGA ishlamaganini ko'rish orqali muammoni tezda topib bo'ladi.
+      if(errorMsg){
+        detail.textContent = errorMsg;
+        detail.style.display = "block";
+      }
+    }
     else { bar.style.width = "0"; }
   });
 
