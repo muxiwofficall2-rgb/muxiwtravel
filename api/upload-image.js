@@ -6,11 +6,16 @@
 // This is used for two things: (1) permanently storing the image so it has
 // a link the admin/customer can open later from the "status" screens, and
 // (2) giving the upload widget its fast "yashil ✓" (ready) confirmation.
-// It does NOT handle the Telegram notification anymore — see
-// /api/notify-telegram.js for that, which sends the photo bytes directly
-// instead of relying on this URL, to avoid CDN-propagation race conditions.
+// It does NOT handle the Telegram notification — see /api/notify-telegram.js
+// for that, which sends the photo bytes directly instead of relying on this
+// URL, avoiding CDN-propagation race conditions.
+//
+// SECURITY: the imgbb key is read from an environment variable rather than
+// written directly in this file, for the same reason the Telegram token
+// was moved out of the codebase — anything hardcoded here would be visible
+// to anyone who looks at the public GitHub repository.
 
-const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7";
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY;
 
 export const config = {
   api: {
@@ -30,6 +35,9 @@ export default async function handler(req, res) {
   }
   if (req.method !== "POST") {
     return res.status(405).json({ error: "method not allowed" });
+  }
+  if (!IMGBB_API_KEY) {
+    return res.status(500).json({ error: "IMGBB_API_KEY Vercel muhit o'zgaruvchilarida sozlanmagan." });
   }
 
   try {
