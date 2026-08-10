@@ -2,6 +2,13 @@
 // domain, for the same reason as kv.js: some in-app browsers block direct
 // requests to third-party domains, so the visitor's browser only talks to
 // us, and we forward the upload to imgbb from Vercel's servers.
+//
+// This is used for two things: (1) permanently storing the image so it has
+// a link the admin/customer can open later from the "status" screens, and
+// (2) giving the upload widget its fast "yashil ✓" (ready) confirmation.
+// It does NOT handle the Telegram notification anymore — see
+// /api/notify-telegram.js for that, which sends the photo bytes directly
+// instead of relying on this URL, to avoid CDN-propagation race conditions.
 
 const IMGBB_API_KEY = "aacb40f24687e215c00fe5c42e37d0a7";
 
