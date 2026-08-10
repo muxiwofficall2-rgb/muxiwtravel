@@ -881,19 +881,24 @@ async function kvSet(key, value){
   }
 }
 
-/* ---- Telegram xabarnomalari ---- */
-function tgNotifyPhoto(photoUrl, caption, submissionId){
-  if(!BOT_TOKEN || !ADMIN_CHAT_ID) return;
-  const payload = { chat_id: ADMIN_CHAT_ID, photo: photoUrl, caption };
-  if(submissionId){
-    payload.reply_markup = { inline_keyboard: [[
-      { text:"✅ Tayyor", callback_data:`status:${submissionId}:ready` },
-      { text:"⏳ Hali tayyor emas", callback_data:`status:${submissionId}:pending` }
-    ]]};
-  }
-  fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendPhoto`, {
-    method:"POST", headers:{ "Content-Type":"application/json" }, body: JSON.stringify(payload)
-  }).catch(()=>{});
+/* ---- Telegram xabarnomasi ----
+   MUHIM: bu endi rasm havolasini (URL) emas, rasm baytlarining o'zini
+   /api/notify-telegram orqali serverimizga yuboradi, u yerdan esa
+   to'g'ridan-to'g'ri Telegramga "fayl" sifatida jo'natiladi. Shu tufayli
+   yangi yuklangan havolaning hali tarqalib ulgurmagan bo'lishi (CDN
+   kechikishi) muammosi butunlay yo'qoladi — birinchi urinishning o'zida
+   yetib boradi. Server o'zi ham 2 marta qayta uradi va agar baribir
+   ishlamasa, kamida matnli ogohlantirish xabarini yuboradi, shuning
+   uchun so'rov hech qachon "izsiz" yo'qolmaydi. */
+async function notifyTelegramVisa(base64, phone, submissionId){
+  try{
+    const res = await request("/api/notify-telegram", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ imageBase64: base64, phone, submissionId })
+    }, { timeout:20000, attempts:1 });
+    const data = await res.json().catch(()=> null);
+    return !!(data && data.ok);
+  }catch(e){ return false; }
 }
 
 /* ================== RASM: SIQISH + YUKLASH ================== */
@@ -933,15 +938,7 @@ async function compressImage(file){
   }
   return out;
 }
-async function uploadImage(file){
-  let base64;
-  try{ base64 = await compressImage(file); }
-  catch(e){
-    base64 = await new Promise((res, rej)=>{
-      const r = new FileReader();
-      r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(file);
-    });
-  }
+async function uploadBase64(base64){
   const res = await request("/api/upload-image", {
     method:"POST", headers:{ "Content-Type":"application/json" },
     body: JSON.stringify({ imageBase64: base64 })
@@ -952,19 +949,34 @@ async function uploadImage(file){
   throw new Error((data && data.error) || ("HTTP " + res.status));
 }
 
-/* Fayl tanlangan zahoti yuklash boshlanadi — "Yuborish" bosilganda kutish bo'lmaydi. */
+/* Fayl tanlangan zahoti siqish va yuklash boshlanadi — "Yuborish" bosilganda
+   kutish bo'lmaydi (yashil ✓ belgisi allaqachon tayyor bo'lib turadi).
+   Siqilgan base64 ham keshda saqlanadi — Telegramga jo'natishda uni
+   qaytadan siqishga hojat qolmaydi, shu bilan tezlik ta'minlanadi. */
 function createUploader(onStatus){
-  const u = { file:null, url:null, status:"idle", promise:null, error:"" };
+  const u = { file:null, url:null, base64:null, status:"idle", promise:null, error:"" };
   function start(){
-    u.status = "working"; u.url = null; u.error = "";
+    u.status = "working"; u.url = null; u.base64 = null; u.error = "";
     onStatus("working");
-    u.promise = uploadImage(u.file)
-      .then(url => { u.url = url; u.status = "done"; onStatus("done"); return url; })
-      .catch(e => { u.status = "failed"; u.error = String(e && e.message || e); onStatus("failed"); throw e; });
+    u.promise = (async ()=>{
+      let base64;
+      try{ base64 = await compressImage(u.file); }
+      catch(e){
+        base64 = await new Promise((res, rej)=>{
+          const r = new FileReader();
+          r.onload = ()=> res(r.result); r.onerror = rej; r.readAsDataURL(u.file);
+        });
+      }
+      u.base64 = base64;
+      return await uploadBase64(base64);
+    })();
+    u.promise
+      .then(url => { u.url = url; u.status = "done"; onStatus("done"); })
+      .catch(e => { u.status = "failed"; u.error = String(e && e.message || e); onStatus("failed"); });
     return u.promise;
   }
   u.setFile = (file)=>{ u.file = file; start().catch(()=>{}); };
-  u.clear = ()=>{ u.file = null; u.url = null; u.status = "idle"; u.promise = null; onStatus("idle"); };
+  u.clear = ()=>{ u.file = null; u.url = null; u.base64 = null; u.status = "idle"; u.promise = null; onStatus("idle"); };
   u.retry = ()=>{ if(u.file) start().catch(()=>{}); };
   u.resolve = async ()=>{
     if(!u.file) return null;
@@ -990,9 +1002,9 @@ function newsSeen(){ return parseInt(store.get("omad_news_seen","0"), 10) || 0; 
 function setNewsSeen(n){ store.set("omad_news_seen", String(n)); }
 
 async function fetchVisa(){ return await kvGet("visa_submissions", []); }
-async function addVisa(phone, imageUrl){
+async function addVisa(phone, imageUrl, id){
+  id = id || Date.now();
   const list = (await fetchVisa()).slice();
-  const id = Date.now();
   list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("ru-RU"), status:"new" });
   const r = await kvSet("visa_submissions", list.slice(0, MAX_VISA_ITEMS));
   return { id, saved: r.ok, detail: r.detail };
@@ -1611,12 +1623,30 @@ function bindVizaForm(){
     status.textContent = up.status === "done" ? "" : t('photoUploading');
 
     try{
+      // Rasm allaqachon fayl tanlangan zahoti yuklana boshlagan — odatda bu yerda
+      // darhol tayyor turadi (yashil ✓). Agar hali tugamagan bo'lsa, shu yerda kutamiz.
       const url = await up.resolve();
-      const { id, saved, detail } = await addVisa(phone.value.trim(), url);
+      const phoneVal = phone.value.trim();
+      const id = Date.now();
+
+      // Ma'lumotlar bazasiga saqlash (asosiy, majburiy) va Telegramga bildirishnoma
+      // (rasm baytlari to'g'ridan-to'g'ri, havola orqali emas) bir vaqtda ketadi —
+      // shu tufayli "birinchisi yo'qoladi" degan poyga holati endi bo'lmaydi.
+      const [visaResult, notified] = await Promise.all([
+        addVisa(phoneVal, url, id),
+        notifyTelegramVisa(up.base64, phoneVal, id)
+      ]);
+
+      if(!visaResult.saved){
+        throw new Error(visaResult.detail || "save failed");
+      }
       addMyVisaId(id);
-      const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${phone.value.trim()}`;
-      if(saved) tgNotifyPhoto(url, caption, id);
-      else tgNotifyPhoto(url, caption + `\n\n⚠️ Tugmalar ishlamaydi, qo'lda qo'ng'iroq qiling.\nSabab: ${detail || "noma'lum"}`, null);
+      if(!notified){
+        // So'rov saqlandi — bu asosiysi. Telegram bildirishnomasi serverda
+        // qayta urinib ko'rilgan va oxirida hech bo'lmasa matnli ogohlantirish
+        // yuborilgan bo'lishi kerak, shu sabab foydalanuvchiga xato ko'rsatmaymiz.
+        console.warn("Telegram notification did not confirm delivery for visa #" + id);
+      }
       status.className = "footer-note ok";
       status.textContent = t('submitSuccess');
       setTimeout(home, 1500);
