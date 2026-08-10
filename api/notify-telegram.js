@@ -1,22 +1,25 @@
 // /api/notify-telegram.js — sends the visa-check photo directly to the admin's
 // Telegram chat as file bytes (multipart), instead of by URL.
 //
-// WHY THIS EXISTS: the previous version asked Telegram to fetch the photo by
-// its freshly-created imgbb URL. Telegram's servers occasionally tried to
-// fetch that URL before it had fully propagated across imgbb's CDN, and
-// sendPhoto would then fail silently — the very first submission of a
-// session could vanish with no error and no retry. Sending the actual bytes
-// removes that dependency entirely: nothing outside our own servers needs to
-// "catch up" before the photo can be delivered, so the very first attempt
-// works exactly as reliably as every attempt after it.
+// WHY BYTES, NOT A URL: the previous version asked Telegram to fetch the
+// photo by its freshly-created imgbb URL. Telegram's servers occasionally
+// tried to fetch that URL before it had fully propagated across imgbb's
+// CDN, and sendPhoto would then fail silently — the very first submission
+// of a session could vanish with no error and no retry. Sending the actual
+// bytes removes that dependency entirely: nothing outside our own servers
+// needs to "catch up" before the photo can be delivered.
 //
-// This endpoint also retries automatically and, if sending the photo still
-// fails after retrying, always falls back to a plain text alert (with the
-// phone number) so the admin is never left with zero notification for a
-// submission that did arrive.
+// SECURITY: the bot token and chat id are read from environment variables
+// (set in Vercel -> Project Settings -> Environment Variables) and never
+// appear in this file or anywhere the browser can see. This matters:
+// tokens hardcoded in source files that get pushed to a public GitHub repo
+// are routinely scraped by bots within minutes and hijacked to send spam —
+// that is almost certainly what happened to the previous token. Reading it
+// from an environment variable at request time means it is never present
+// in the repository, the deployed frontend, or the page source at all.
 
-const BOT_TOKEN = "8949050831:AAHP91glGT-3nt7iKceUckAibvtfKohMGKc";
-const ADMIN_CHAT_ID = "7359558983";
+const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID;
 
 export const config = {
   api: {
@@ -101,7 +104,15 @@ export default async function handler(req, res) {
 
   if (req.method === "OPTIONS") return res.status(200).end();
   if (req.method !== "POST") return res.status(405).json({ error: "method not allowed" });
-  if (!BOT_TOKEN || !ADMIN_CHAT_ID) return res.status(200).json({ ok: false, error: "bot not configured" });
+
+  if (!BOT_TOKEN || !ADMIN_CHAT_ID) {
+    // Fails safe: if the environment variables haven't been set in Vercel
+    // yet, we say so clearly instead of silently doing nothing.
+    return res.status(200).json({
+      ok: false,
+      error: "TELEGRAM_BOT_TOKEN / TELEGRAM_ADMIN_CHAT_ID Vercel muhit o'zgaruvchilarida sozlanmagan.",
+    });
+  }
 
   try {
     const { imageBase64, phone, submissionId } = req.body || {};
