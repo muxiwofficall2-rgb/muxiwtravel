@@ -199,6 +199,16 @@
   .glass-btn-red::before{background:var(--accent-red);}
   .glass-btn-red:active{background:rgba(232,53,79,.22);}
 
+  .stepper{display:flex;align-items:center;gap:14px;flex-shrink:0;}
+  .stepper-btn{
+    width:34px;height:34px;border-radius:50%;border:1px solid var(--glass-border);
+    background:var(--glass-hover);color:var(--text);font-size:19px;font-weight:700;
+    cursor:pointer;display:flex;align-items:center;justify-content:center;
+    font-family:inherit;line-height:1;padding:0;
+  }
+  .stepper-btn:active{background:var(--accent-red);border-color:var(--accent-red);color:#fff;}
+  .stepper-count{font-size:17px;font-weight:700;min-width:20px;text-align:center;}
+
   .ripple{
     position:absolute;border-radius:50%;background:var(--ripple);
     transform:scale(0);animation:rippleAnim .55s ease-out;pointer-events:none;
@@ -519,8 +529,14 @@ let THEME = store.get("omad_theme","light") === "dark" ? "dark" : "light";
 
 const state = {
   direction:null, fromCity:null, toCity:null, fromCustom:"", toCustom:"",
-  date:null, calMonth:new Date().getMonth(), calYear:new Date().getFullYear()
+  date:null, calMonth:new Date().getMonth(), calYear:new Date().getFullYear(),
+  tripType:"oneway", returnDate:null,
+  passengers:{ adults:1, children:0, infants:0 }
 };
+function resetTripExtras(){
+  state.date = null; state.returnDate = null; state.tripType = "oneway";
+  state.passengers = { adults:1, children:0, infants:0 };
+}
 let navStack = [];
 
 /* ================== TARJIMALAR ================== */
@@ -591,7 +607,18 @@ const T = {
     statusPendingText:"So'rovingiz hali ko'rib chiqilmoqda, biroz kuting. Xohlasangiz, Bosh Konsullikning rasmiy Telegram guruhiga murojaat qilishingiz mumkin.",
     noVisaRequest:"Sizda hali yuborilgan so'rov mavjud emas.",
     inAppWarning:"Diqqat: sayt ilova ichidagi brauzerda ochilgan. Rasm yuklash to'g'ri ishlashi uchun havolani telefoningizning asosiy brauzerida (Safari yoki Chrome) oching.",
-    copyLink:"Havolani nusxalash", linkCopied:"Havola nusxalandi ✓"
+    copyLink:"Havolani nusxalash", linkCopied:"Havola nusxalandi ✓",
+    roundTripQuestion:"Qaytish chiptasini ham xohlaysizmi?",
+    oneWayBtn:"Yo'q, faqat borish", roundTripBtn:"Ha, borib-kelish",
+    returnDateTitle:"Qaytish sanasini tanlang",
+    passengersTitle:"Yo'lovchilar soni",
+    passengersSub:"Aviakompaniyalar bolalar uchun alohida chegirma beradi — shuning uchun yoshini aniq ko'rsating.",
+    adultsLabel:"Kattalar", adultsSub:"12 yosh va undan katta",
+    childrenLabel:"Bolalar", childrenSub:"2 – 12 yosh (chegirma bilan)",
+    infantsLabel:"Chaqaloqlar", infantsSub:"0 – 2 yosh (chegirma bilan)",
+    continueBtn:"Davom etish",
+    tripTypeLabel:"Chipta turi", oneWayText:"Faqat borish", roundTripText:"Borib-kelish",
+    returnDate:"Qaytish sanasi", passengersSummary:"Yo'lovchilar"
   },
   ru:{
     greeting:"Здравствуйте! Рады приветствовать вас на платформе \"Omad Tour\".",
@@ -659,7 +686,18 @@ const T = {
     statusPendingText:"Ваша заявка ещё рассматривается, пожалуйста, подождите. При желании вы можете обратиться в официальную Telegram-группу Генконсульства.",
     noVisaRequest:"У вас пока нет отправленных заявок.",
     inAppWarning:"Внимание: сайт открыт во встроенном браузере приложения. Чтобы загрузка фото работала корректно, откройте ссылку в основном браузере телефона (Safari или Chrome).",
-    copyLink:"Скопировать ссылку", linkCopied:"Ссылка скопирована ✓"
+    copyLink:"Скопировать ссылку", linkCopied:"Ссылка скопирована ✓",
+    roundTripQuestion:"Хотите также обратный билет?",
+    oneWayBtn:"Нет, только в одну сторону", roundTripBtn:"Да, туда и обратно",
+    returnDateTitle:"Выберите дату обратного рейса",
+    passengersTitle:"Количество пассажиров",
+    passengersSub:"Авиакомпании предоставляют отдельную скидку для детей — пожалуйста, укажите точный возраст.",
+    adultsLabel:"Взрослые", adultsSub:"От 12 лет и старше",
+    childrenLabel:"Дети", childrenSub:"2 – 12 лет (со скидкой)",
+    infantsLabel:"Младенцы", infantsSub:"0 – 2 года (со скидкой)",
+    continueBtn:"Продолжить",
+    tripTypeLabel:"Тип билета", oneWayText:"В одну сторону", roundTripText:"Туда и обратно",
+    returnDate:"Дата обратного рейса", passengersSummary:"Пассажиры"
   },
   en:{
     greeting:"Welcome. We are glad to have you with \"Omad Tour\".",
@@ -727,7 +765,18 @@ const T = {
     statusPendingText:"Your request is still being reviewed, please wait a little longer. You may also contact the official Telegram group of the Consulate General.",
     noVisaRequest:"You have not submitted any requests yet.",
     inAppWarning:"Note: this site is open inside an app's built-in browser. For photo uploads to work reliably, open this link in your phone's main browser (Safari or Chrome).",
-    copyLink:"Copy link", linkCopied:"Link copied ✓"
+    copyLink:"Copy link", linkCopied:"Link copied ✓",
+    roundTripQuestion:"Would you also like a return ticket?",
+    oneWayBtn:"No, one way only", roundTripBtn:"Yes, round trip",
+    returnDateTitle:"Select the return date",
+    passengersTitle:"Number of passengers",
+    passengersSub:"Airlines offer a separate discount for children, so please specify the exact age group.",
+    adultsLabel:"Adults", adultsSub:"12 years and older",
+    childrenLabel:"Children", childrenSub:"2 – 12 years (discounted)",
+    infantsLabel:"Infants", infantsSub:"0 – 2 years (discounted)",
+    continueBtn:"Continue",
+    tripTypeLabel:"Trip type", oneWayText:"One way", roundTripText:"Round trip",
+    returnDate:"Return date", passengersSummary:"Passengers"
   }
 };
 function t(key){ return (T[LANG] && T[LANG][key]) || (T.uz[key] !== undefined ? T.uz[key] : key); }
@@ -1076,7 +1125,9 @@ function screenHTML(name, opts){
     case "aviaMenu": return aviaMenuScreen();
     case "cityStep": return cityStepScreen(opts);
     case "otherCountry": return otherCountryScreen(opts);
-    case "calendar": return calendarScreen();
+    case "calendar": return calendarScreen(opts);
+    case "tripType": return tripTypeScreen();
+    case "passengers": return passengersScreen();
     case "contact": return contactScreen();
     case "tourServices": return tourServicesScreen();
     case "viza": return vizaScreen();
@@ -1192,18 +1243,20 @@ function otherCountryScreen(opts){
 }
 
 function daysInMonth(y,m){ return new Date(y, m+1, 0).getDate(); }
-function calendarInner(){
+function calendarInner(mode){
   const y = state.calYear, m = state.calMonth;
   const offset = (new Date(y,m,1).getDay() + 6) % 7;
   const total = daysInMonth(y,m);
   const today = new Date(); today.setHours(0,0,0,0);
+  const minDate = mode === "return" && state.date ? state.date : today;
+  const selectedDate = mode === "return" ? state.returnDate : state.date;
   let cells = "";
   for(let i=0;i<offset;i++) cells += `<div class="cal-day empty"></div>`;
   for(let d=1; d<=total; d++){
     const dt = new Date(y,m,d);
-    const past = dt < today;
+    const past = dt < minDate;
     const isToday = dt.getTime() === today.getTime();
-    const sel = state.date && state.date.getFullYear()===y && state.date.getMonth()===m && state.date.getDate()===d;
+    const sel = selectedDate && selectedDate.getFullYear()===y && selectedDate.getMonth()===m && selectedDate.getDate()===d;
     cells += `<div class="cal-day${past?' past':''}${isToday?' today':''}${sel?' selected':''}" data-day="${d}">${d}</div>`;
   }
   const dow = t('dow').map(d => `<div class="cal-dow">${d}</div>`).join("");
@@ -1214,10 +1267,46 @@ function calendarInner(){
     </div>
     <div class="cal-grid">${dow}${cells}</div>`;
 }
-function calendarScreen(){
+function calendarScreen(opts){
+  const mode = (opts && opts.mode) || "departure";
+  const titleKey = mode === "return" ? "returnDateTitle" : "chooseDate";
   return `<div class="screen active">${topbar()}
-    <h2 class="title">${esc(t('chooseDate'))}</h2>
-    <div class="calendar-card" id="calCard">${calendarInner()}</div>
+    <h2 class="title">${esc(t(titleKey))}</h2>
+    <div class="calendar-card" id="calCard" data-mode="${mode}">${calendarInner(mode)}</div>
+  </div>`;
+}
+
+function passengerStepper(prefix, label, sub, value){
+  return `<div class="glass-btn" style="cursor:default">
+    <span class="label-col"><span class="label">${esc(label)}</span><span class="sub">${esc(sub)}</span></span>
+    <div class="stepper">
+      <button type="button" class="stepper-btn" data-step="${prefix}" data-dir="-1" aria-label="minus">−</button>
+      <span class="stepper-count" id="count-${prefix}">${value}</span>
+      <button type="button" class="stepper-btn" data-step="${prefix}" data-dir="1" aria-label="plus">+</button>
+    </div>
+  </div>`;
+}
+function passengersScreen(){
+  const p = state.passengers;
+  return `<div class="screen active">${topbar()}
+    <h2 class="title">${esc(t('passengersTitle'))}</h2>
+    <div class="section-text">${esc(t('passengersSub'))}</div>
+    <div class="list-col">
+      ${passengerStepper('adults', t('adultsLabel'), t('adultsSub'), p.adults)}
+      ${passengerStepper('children', t('childrenLabel'), t('childrenSub'), p.children)}
+      ${passengerStepper('infants', t('infantsLabel'), t('infantsSub'), p.infants)}
+    </div>
+    <button class="primary-btn" id="passengersContinue">${esc(t('continueBtn'))}</button>
+  </div>`;
+}
+
+function tripTypeScreen(){
+  return `<div class="screen active">${topbar()}
+    <h2 class="title">${esc(t('roundTripQuestion'))}</h2>
+    <div class="list-col">
+      <button class="glass-btn" data-triptype="oneway">${iconCircle(ICONS.plane)}<span class="label">${esc(t('oneWayBtn'))}</span></button>
+      <button class="glass-btn" data-triptype="roundtrip">${iconCircle(ICONS.plane)}<span class="label">${esc(t('roundTripBtn'))}</span></button>
+    </div>
   </div>`;
 }
 
@@ -1225,7 +1314,22 @@ function summaryText(){
   const from = state.direction === "other" ? state.fromCustom : state.fromCity;
   const to   = state.direction === "other" ? state.toCustom   : state.toCity;
   const d = state.date ? `${state.date.getDate()} ${t('mon')[state.date.getMonth()]} ${state.date.getFullYear()}` : "";
-  return `Omad Tour\n${t('from')}: ${from}\n${t('to')}: ${to}\n${t('date')}: ${d}`;
+  const lines = [
+    "Omad Tour",
+    `${t('from')}: ${from}`,
+    `${t('to')}: ${to}`,
+    `${t('date')}: ${d}`,
+    `${t('tripTypeLabel')}: ${state.tripType === "roundtrip" ? t('roundTripText') : t('oneWayText')}`
+  ];
+  if(state.tripType === "roundtrip" && state.returnDate){
+    lines.push(`${t('returnDate')}: ${state.returnDate.getDate()} ${t('mon')[state.returnDate.getMonth()]} ${state.returnDate.getFullYear()}`);
+  }
+  const p = state.passengers;
+  const paxParts = [`${t('adultsLabel')}: ${p.adults}`];
+  if(p.children > 0) paxParts.push(`${t('childrenLabel')}: ${p.children}`);
+  if(p.infants > 0) paxParts.push(`${t('infantsLabel')}: ${p.infants}`);
+  lines.push(`${t('passengersSummary')}: ${paxParts.join(", ")}`);
+  return lines.join("\n");
 }
 function contactScreen(){
   const body = summaryText();
@@ -1432,7 +1536,9 @@ function bind(name, opts){
   if(name === "home") bindHome();
   if(name === "cityStep") bindCityStep(opts);
   if(name === "otherCountry") bindOther(opts);
-  if(name === "calendar") bindCalendar();
+  if(name === "calendar") bindCalendar(opts);
+  if(name === "tripType") bindTripType();
+  if(name === "passengers") bindPassengers();
   if(name === "contact") bindContact();
   if(name === "viza") bindViza();
   if(name === "vizaForm") bindVizaForm();
@@ -1491,7 +1597,8 @@ function bindCityStep(opts){
         go("cityStep", { direction:opts.direction, step:1 });
       }else{
         state.toCity = b.dataset.city;
-        go("calendar", {});
+        resetTripExtras();
+        go("calendar", { mode:"departure" });
       }
     });
   });
@@ -1511,26 +1618,75 @@ function bindOther(opts){
       const v = document.getElementById("toInput").value.trim();
       if(!v){ document.getElementById("toErr").style.display = "block"; return; }
       state.toCustom = v;
-      go("calendar", {});
+      resetTripExtras();
+      go("calendar", { mode:"departure" });
     });
   }
 }
 
-function bindCalendar(){
+function bindCalendar(opts){
+  const mode = (opts && opts.mode) || "departure";
   const card = document.getElementById("calCard");
   card.querySelector("#prevMonth").addEventListener("click", ()=>{
     state.calMonth--; if(state.calMonth < 0){ state.calMonth = 11; state.calYear--; }
-    card.innerHTML = calendarInner(); bindCalendar();
+    card.innerHTML = calendarInner(mode); bindCalendar({ mode });
   });
   card.querySelector("#nextMonth").addEventListener("click", ()=>{
     state.calMonth++; if(state.calMonth > 11){ state.calMonth = 0; state.calYear++; }
-    card.innerHTML = calendarInner(); bindCalendar();
+    card.innerHTML = calendarInner(mode); bindCalendar({ mode });
   });
   card.querySelectorAll(".cal-day:not(.empty):not(.past)").forEach(el=>{
     el.addEventListener("click", ()=>{
-      state.date = new Date(state.calYear, state.calMonth, parseInt(el.dataset.day,10));
-      go("contact", {});
+      const picked = new Date(state.calYear, state.calMonth, parseInt(el.dataset.day,10));
+      if(mode === "return"){
+        state.returnDate = picked;
+        go("passengers", {});
+      }else{
+        state.date = picked;
+        go("tripType", {});
+      }
     });
+  });
+}
+
+function bindTripType(){
+  document.querySelectorAll("[data-triptype]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      state.tripType = b.dataset.triptype;
+      if(state.tripType === "roundtrip"){
+        go("calendar", { mode:"return" });
+      }else{
+        state.returnDate = null;
+        go("passengers", {});
+      }
+    });
+  });
+}
+
+function bindPassengers(){
+  function refresh(){
+    const p = state.passengers;
+    document.getElementById("count-adults").textContent = p.adults;
+    document.getElementById("count-children").textContent = p.children;
+    document.getElementById("count-infants").textContent = p.infants;
+  }
+  document.querySelectorAll("[data-step]").forEach(b=>{
+    b.addEventListener("click", ()=>{
+      const key = b.dataset.step;
+      const dir = parseInt(b.dataset.dir, 10);
+      const p = state.passengers;
+      if(key === "adults"){
+        p.adults = Math.max(1, Math.min(9, p.adults + dir));
+      }else if(key === "children"){
+        p.children = Math.max(0, Math.min(9, p.children + dir));
+      }else if(key === "infants"){
+        p.infants = Math.max(0, Math.min(9, p.infants + dir));
+      }
+      refresh();
+    });
+  });
+  document.getElementById("passengersContinue").addEventListener("click", ()=>{
+    go("contact", {});
   });
 }
 
