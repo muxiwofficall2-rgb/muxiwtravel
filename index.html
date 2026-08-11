@@ -339,10 +339,19 @@
   .addr-block{
     background:var(--glass);border:1px solid var(--glass-border);
     backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    border-radius:16px;padding:14px 16px;margin-bottom:14px;font-size:14.5px;line-height:1.6;
+    border-radius:16px;padding:14px 16px;margin-bottom:16px;font-size:14.5px;line-height:1.6;
     animation:fadeUp .45s ease;
   }
   @keyframes fadeUp{from{opacity:0;transform:translateY(10px);}to{opacity:1;transform:translateY(0);}}
+
+  .office-map{
+    margin-top:12px;border-radius:14px;overflow:hidden;
+    border:1px solid var(--glass-border);
+    background:var(--surface-hover);
+  }
+  .office-map iframe{display:block;width:100%;border:none;}
+  .office-map-actions{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
+  .office-map-actions .glass-btn{padding:11px 14px;font-size:14px;}
 
   .footer-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;line-height:1.5;}
   .footer-note.err{color:var(--accent-red);font-weight:600;}
@@ -525,6 +534,13 @@ const GROUP_LINKS = {
   notary:"https://t.me/biletispbuz"
 };
 const MAP_LINKS = { m1:"https://yandex.ru/maps/-/CLaRUCPW", m2:"https://yandex.ru/maps/-/CLBoFJ8I" };
+// Ofislarning aniq koordinatalari — sayt ichida jonli xarita ko'rsatish va
+// "Yo'l tarifini olish" tugmasi (Apple/Google xaritasini to'g'ridan-to'g'ri
+// ochish) uchun ishlatiladi.
+const OFFICE_COORDS = {
+  office1: { lat: 59.9139983, lng: 30.3160918 },
+  office2: { lat: 59.9001004, lng: 30.4915802 }
+};
 const HELP_EMAIL = "omadru@bk.ru";
 
 const MAX_NEWS_ITEMS = 30;
@@ -596,6 +612,7 @@ const T = {
     office2title:"2-ofis",
     office2:"Dybenko metro bekati, Bolshevikov shoh ko'chasi, 24-uy, 1-bino.",
     map1:"Texnologicheskiy institut metro bekati", map2:"Dybenko metro bekati",
+    getDirections:"Yo'l tarifini olish", openInYandex:"Yandex xaritada ochish",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
     helpPh:"Fikr-mulohazangizni shu yerga yozing", helpFieldLabel:"Fikr-mulohazangiz",
     attachedImage:"Ilova qilingan rasm",
@@ -675,6 +692,7 @@ const T = {
     office2title:"Офис 2",
     office2:"Станция метро «Дыбенко», проспект Большевиков, дом 24, корпус 1.",
     map1:"Станция метро «Технологический институт»", map2:"Станция метро «Дыбенко»",
+    getDirections:"Проложить маршрут", openInYandex:"Открыть в Яндекс Картах",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
     helpPh:"Напишите ваш отзыв здесь", helpFieldLabel:"Ваш отзыв",
     attachedImage:"Прикреплённое изображение",
@@ -754,6 +772,7 @@ const T = {
     office2title:"Office 2",
     office2:"Dybenko metro station, Bolshevikov Avenue, building 24, block 1.",
     map1:"Tekhnologicheskiy Institut metro station", map2:"Dybenko metro station",
+    getDirections:"Get directions", openInYandex:"Open in Yandex Maps",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
     helpPh:"Write your feedback here", helpFieldLabel:"Your feedback",
     attachedImage:"Attached image",
@@ -862,6 +881,23 @@ function esc(str){
 }
 function cityName(c){ return c.name[LANG] || c.name.uz; }
 function telHref(n){ return "tel:" + n.replace(/[^\d+]/g,""); }
+/* Qurilmaga qarab to'g'ri xarita ilovasini ochadi — iOS'da Apple xaritalari,
+   boshqa barcha qurilmalarda (Android, kompyuter) Google xaritalari orqali
+   joriy joylashuvdan boshlab yo'l tarifini to'g'ridan-to'g'ri ko'rsatadi. */
+function directionsHref(lat, lng){
+  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  return isIOS
+    ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`
+    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+}
+function yandexEmbedSrc(shortLink){
+  // Yandex qisqa havolasini ("https://yandex.ru/maps/-/XXXX") to'g'ridan-to'g'ri
+  // ko'milgan (iframe) xarita manziliga aylantiradi — bu Yandex'ning "Saytga
+  // qo'shish" funksiyasi ishlatadigan xuddi shu, hech qanday API kalitisiz
+  // ishlaydigan rasmiy usul.
+  const code = shortLink.split("/-/")[1] || "";
+  return `https://yandex.ru/map-widget/v1/-/${code}`;
+}
 function smsHref(n, body){ return "sms:" + n.replace(/[^\d+]/g,"") + (body ? "?body=" + encodeURIComponent(body) : ""); }
 function waHref(n, body){ return "https://wa.me/" + n.replace(/[^\d]/g,"") + (body ? "?text=" + encodeURIComponent(body) : ""); }
 function tgHref(handle, text){
@@ -1464,15 +1500,24 @@ function groupsScreen(){
   </div>`;
 }
 
+function officeMapBlock(titleKey, textKey, coords, mapLink){
+  return `<div class="addr-block">
+    <b>${esc(t(titleKey))}</b><br>${esc(t(textKey))}
+    <div class="office-map">
+      <iframe src="${yandexEmbedSrc(mapLink)}" width="100%" height="180"
+        frameborder="0" loading="lazy" title="${esc(t(titleKey))}"></iframe>
+    </div>
+    <div class="office-map-actions">
+      <a class="glass-btn" href="${directionsHref(coords.lat, coords.lng)}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('getDirections'))}</span></a>
+      <a class="glass-btn" href="${mapLink}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('openInYandex'))}</span></a>
+    </div>
+  </div>`;
+}
 function addressesScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('addrTitle'))}</h2>
-    <div class="addr-block"><b>${esc(t('office1title'))}</b><br>${esc(t('office1'))}</div>
-    <div class="addr-block" style="animation-delay:.1s"><b>${esc(t('office2title'))}</b><br>${esc(t('office2'))}</div>
-    <div class="list-col">
-      <a class="glass-btn" href="${MAP_LINKS.m1}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('map1'))}</span></a>
-      <a class="glass-btn" href="${MAP_LINKS.m2}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('map2'))}</span></a>
-    </div>
+    ${officeMapBlock('office1title', 'office1', OFFICE_COORDS.office1, MAP_LINKS.m1)}
+    ${officeMapBlock('office2title', 'office2', OFFICE_COORDS.office2, MAP_LINKS.m2)}
   </div>`;
 }
 
