@@ -395,6 +395,11 @@
   .route-step-text{flex:1;font-size:14px;line-height:1.4;color:var(--text);font-weight:600;}
   .route-step-dist{font-size:12px;color:var(--text-dim);margin-top:2px;}
   .route-loading{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:14px;}
+  .route-fallback-note{
+    font-size:12.5px;color:var(--text-dim);text-align:center;
+    padding:8px 10px;margin-bottom:6px;border-radius:10px;
+    background:var(--glass);border:1px solid var(--glass-border);
+  }
 
   .footer-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;line-height:1.5;}
   .footer-note.err{color:var(--accent-red);font-weight:600;}
@@ -540,7 +545,7 @@
      peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
      uchun eng to'liq jamoat transporti ma'lumotlariga ega xizmat). Bepul
      kalit, kuniga 25 000 so'rovgacha. -->
-<script src="https://api-maps.yandex.ru/2.1/?apikey=7b53b62a-2e25-4f19-a23f-55548538b722&amp;lang=ru_RU"></script>
+<script src="https://api-maps.yandex.ru/2.1/?apikey=94676274-7bca-4386-a02a-461047d08d3d&amp;lang=ru_RU"></script>
 
 <script>
 /* =========================================================
@@ -673,6 +678,7 @@ const T = {
     routeRoundabout:"aylanma yo'ldan o'ting",
     routeWalk:"Piyoda yuring", routeTransferAt:"Peresadka", routeWait:"Kutish", routeTransport:"Transportda boring",
     noTransitRoute:"Bu yo'nalish uchun jamoat transporti topilmadi. Piyoda boring yoki taksidan foydalaning.",
+    pedestrianFallbackNote:"Bu yo'nalish uchun jamoat transporti tavsiya etilmadi — piyoda yo'l ko'rsatilmoqda.",
     buildingRoute:"Yo'nalish chizilmoqda…", youAreHere:"Siz shu yerdasiz",
     minutesShort:"daqiqa", locationError:"Joylashuvni aniqlab bo'lmadi. Brauzer sozlamalarida ruxsat berilganini tekshiring.",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
@@ -761,6 +767,7 @@ const T = {
     routeRoundabout:"проедьте через круговое движение",
     routeWalk:"Идите пешком", routeTransferAt:"Пересадка", routeWait:"Ожидание", routeTransport:"Поезжайте на транспорте",
     noTransitRoute:"Маршрут общественного транспорта не найден. Идите пешком или воспользуйтесь такси.",
+    pedestrianFallbackNote:"Общественный транспорт для этого маршрута не рекомендован — показан пеший путь.",
     buildingRoute:"Строим маршрут…", youAreHere:"Вы здесь",
     minutesShort:"мин", locationError:"Не удалось определить местоположение. Проверьте разрешения браузера.",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
@@ -849,6 +856,7 @@ const T = {
     routeRoundabout:"go through the roundabout",
     routeWalk:"Walk", routeTransferAt:"Transfer", routeWait:"Wait", routeTransport:"Take transport",
     noTransitRoute:"No public transit route found. Walk instead or use a taxi.",
+    pedestrianFallbackNote:"Public transit wasn't recommended for this route — showing the walking path instead.",
     buildingRoute:"Building route…", youAreHere:"You are here",
     minutesShort:"min", locationError:"Could not determine your location. Please check your browser's location permission.",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
@@ -1654,6 +1662,56 @@ function openRouteOverlay(id, coords){
     return;
   }
 
+  function renderSegments(activeRoute, stepsBox, statsEl){
+    statsEl.textContent = activeRoute.properties.get("duration").text;
+    statsEl.style.display = "block";
+    let stepsHtml = "";
+    activeRoute.getPaths().each(function(path){
+      path.getSegments().each(function(segment){
+        const segType = segment.properties.get("type");
+        const distObj = segment.properties.get("distance");
+        const durObj = segment.properties.get("duration");
+        const mainText = segment.properties.get("text") || segmentLabel(segType);
+        const metaParts = [];
+        if(distObj && distObj.text) metaParts.push(distObj.text);
+        if(durObj && durObj.text) metaParts.push(durObj.text);
+        stepsHtml += `<div class="route-step">
+          <span class="route-step-icon">${segmentIcon(segType)}</span>
+          <div>
+            <div class="route-step-text">${esc(mainText)}</div>
+            ${metaParts.length ? `<div class="route-step-dist">${esc(metaParts.join(" · "))}</div>` : ""}
+          </div>
+        </div>`;
+      });
+    });
+    stepsBox.innerHTML = stepsHtml;
+    return !!stepsHtml;
+  }
+
+  // Jamoat transporti marshruti topilmasa (masalan masofa juda qisqa bo'lsa,
+  // yoki shu yo'nalish uchun umuman transport tavsiya etilmasa), avtomatik
+  // piyoda marshrutiga o'tamiz — shunda foydalanuvchi baribir bo'sh
+  // ekran o'rniga foydali natija ko'radi.
+  function tryPedestrianFallback(uLat, uLng, stepsBox, statsEl){
+    const pedestrianRoute = new ymaps.multiRouter.MultiRoute({
+      referencePoints: [[uLat, uLng], [coords.lat, coords.lng]],
+      params: { routingMode: "pedestrian" }
+    }, { boundsAutoApply: true });
+    yMap.geoObjects.add(pedestrianRoute);
+
+    pedestrianRoute.model.events.add("requestsuccess", function(){
+      const activeRoute = pedestrianRoute.getActiveRoute();
+      if(!activeRoute || !renderSegments(activeRoute, stepsBox, statsEl)){
+        stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+      }else{
+        stepsBox.insertAdjacentHTML("afterbegin", `<div class="route-fallback-note">🚶 ${esc(t('pedestrianFallbackNote'))}</div>`);
+      }
+    });
+    pedestrianRoute.model.events.add("requestfail", function(){
+      stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+    });
+  }
+
   navigator.geolocation.getCurrentPosition((pos)=>{
     const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
     const stepsBox = document.getElementById("route-steps-" + id);
@@ -1666,6 +1724,7 @@ function openRouteOverlay(id, coords){
         controls: ["zoomControl"]
       });
 
+      const statsEl = document.getElementById("route-stats-" + id);
       const multiRoute = new ymaps.multiRouter.MultiRoute({
         referencePoints: [[uLat, uLng], [coords.lat, coords.lng]],
         params: { routingMode: "masstransit" }
@@ -1678,38 +1737,15 @@ function openRouteOverlay(id, coords){
 
       multiRoute.model.events.add("requestsuccess", function(){
         const activeRoute = multiRoute.getActiveRoute();
-        if(!activeRoute){
-          stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
-          return;
+        if(!activeRoute || !renderSegments(activeRoute, stepsBox, statsEl)){
+          yMap.geoObjects.remove(multiRoute);
+          tryPedestrianFallback(uLat, uLng, stepsBox, statsEl);
         }
-        const statsEl = document.getElementById("route-stats-" + id);
-        statsEl.textContent = activeRoute.properties.get("duration").text;
-        statsEl.style.display = "block";
-
-        let stepsHtml = "";
-        activeRoute.getPaths().each(function(path){
-          path.getSegments().each(function(segment){
-            const segType = segment.properties.get("type");
-            const distObj = segment.properties.get("distance");
-            const durObj = segment.properties.get("duration");
-            let mainText = segment.properties.get("text") || segmentLabel(segType);
-            const metaParts = [];
-            if(distObj && distObj.text) metaParts.push(distObj.text);
-            if(durObj && durObj.text) metaParts.push(durObj.text);
-            stepsHtml += `<div class="route-step">
-              <span class="route-step-icon">${segmentIcon(segType)}</span>
-              <div>
-                <div class="route-step-text">${esc(mainText)}</div>
-                ${metaParts.length ? `<div class="route-step-dist">${esc(metaParts.join(" · "))}</div>` : ""}
-              </div>
-            </div>`;
-          });
-        });
-        stepsBox.innerHTML = stepsHtml || `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
       });
 
       multiRoute.model.events.add("requestfail", function(){
-        stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+        yMap.geoObjects.remove(multiRoute);
+        tryPedestrianFallback(uLat, uLng, stepsBox, statsEl);
       });
     });
   }, ()=>{
