@@ -356,6 +356,46 @@
     min-height:18px;text-align:center;
   }
 
+  /* To'liq ekranli marshrut oynasi */
+  .route-overlay{
+    position:fixed;inset:0;z-index:70;background:var(--bg-1);
+    display:flex;flex-direction:column;animation:storyFadeIn .18s ease;
+  }
+  .route-overlay-map{
+    flex:1 1 52%;min-height:200px;position:relative;
+  }
+  .route-overlay-map .leaflet-container{
+    height:100%;width:100%;font-family:inherit;
+  }
+  .route-close{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:500;
+    background:rgba(20,20,30,.65);color:#fff;border:none;border-radius:50%;
+    width:38px;height:38px;font-size:16px;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .route-stats{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:500;
+    background:rgba(20,20,30,.65);color:#fff;border-radius:12px;padding:9px 14px;
+    font-size:13px;font-weight:700;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .route-steps{
+    flex:1 1 48%;overflow-y:auto;background:var(--bg-2);
+    padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 20px);
+    border-top:1px solid var(--glass-border);
+  }
+  .route-step{
+    display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--glass-border);
+  }
+  .route-step:last-child{border-bottom:none;}
+  .route-step-icon{
+    width:34px;height:34px;border-radius:50%;background:var(--icon-bg);
+    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;
+  }
+  .route-step-text{flex:1;font-size:14px;line-height:1.4;color:var(--text);font-weight:600;}
+  .route-step-dist{font-size:12px;color:var(--text-dim);margin-top:2px;}
+  .route-loading{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:14px;}
+
   .footer-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;line-height:1.5;}
   .footer-note.err{color:var(--accent-red);font-weight:600;}
   .footer-note.ok{color:#3ec27a;font-weight:600;}
@@ -621,7 +661,10 @@ const T = {
     office2:"Dybenko metro bekati, Bolshevikov shoh ko'chasi, 24-uy, 1-bino.",
     map1:"Texnologicheskiy institut metro bekati", map2:"Dybenko metro bekati",
     getDirections:"Yo'l tarifini olish", openInYandex:"Yandex xaritada ochish",
-    showRouteBtn:"Yo'l tarifini ko'rsatish", locatingYou:"Joylashuvingiz aniqlanmoqda…",
+    showRouteBtn:"Marshrut", locatingYou:"Joylashuvingiz aniqlanmoqda…",
+    routeDepart:"Boshlang", routeArrive:"Siz manzilga yetib keldingiz", routeLeft:"chapga buriling",
+    routeRight:"o'ngga buriling", routeStraight:"to'g'ri davom eting", routeContinue:"davom eting",
+    routeRoundabout:"aylanma yo'ldan o'ting",
     buildingRoute:"Yo'nalish chizilmoqda…", youAreHere:"Siz shu yerdasiz",
     minutesShort:"daqiqa", locationError:"Joylashuvni aniqlab bo'lmadi. Brauzer sozlamalarida ruxsat berilganini tekshiring.",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
@@ -704,7 +747,10 @@ const T = {
     office2:"Станция метро «Дыбенко», проспект Большевиков, дом 24, корпус 1.",
     map1:"Станция метро «Технологический институт»", map2:"Станция метро «Дыбенко»",
     getDirections:"Проложить маршрут", openInYandex:"Открыть в Яндекс Картах",
-    showRouteBtn:"Показать маршрут", locatingYou:"Определяем ваше местоположение…",
+    showRouteBtn:"Маршрут", locatingYou:"Определяем ваше местоположение…",
+    routeDepart:"Начните движение", routeArrive:"Вы прибыли на место", routeLeft:"поверните налево",
+    routeRight:"поверните направо", routeStraight:"продолжайте прямо", routeContinue:"продолжайте движение",
+    routeRoundabout:"проедьте через круговое движение",
     buildingRoute:"Строим маршрут…", youAreHere:"Вы здесь",
     minutesShort:"мин", locationError:"Не удалось определить местоположение. Проверьте разрешения браузера.",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
@@ -787,7 +833,10 @@ const T = {
     office2:"Dybenko metro station, Bolshevikov Avenue, building 24, block 1.",
     map1:"Tekhnologicheskiy Institut metro station", map2:"Dybenko metro station",
     getDirections:"Get directions", openInYandex:"Open in Yandex Maps",
-    showRouteBtn:"Show route", locatingYou:"Locating you…",
+    showRouteBtn:"Route", locatingYou:"Locating you…",
+    routeDepart:"Start", routeArrive:"You have arrived", routeLeft:"turn left",
+    routeRight:"turn right", routeStraight:"continue straight", routeContinue:"continue",
+    routeRoundabout:"go through the roundabout",
     buildingRoute:"Building route…", youAreHere:"You are here",
     minutesShort:"min", locationError:"Could not determine your location. Please check your browser's location permission.",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
@@ -1507,7 +1556,6 @@ function officeMapBlock(id, titleKey, textKey, coords){
     <button type="button" class="glass-btn glass-btn-red" data-route-btn="${id}" style="margin-top:10px">
       ${iconCircle(ICONS.pin)}<span class="label">${esc(t('showRouteBtn'))}</span>
     </button>
-    <div class="office-route-status" id="route-status-${id}"></div>
   </div>`;
 }
 function addressesScreen(){
@@ -1520,7 +1568,7 @@ function addressesScreen(){
 
 /* ================== XARITA (Leaflet — saytning o'zida, hech qanday
    tashqi ilova ochilmaydi, Yandex/Google/Apple'ga bog'liq emas) ================== */
-const officeMaps = {}; // id -> { map, routeLayer, userMarker }
+const officeMaps = {}; // id -> preview map (faqat nishonni ko'rsatadi)
 
 function ensureLeafletDefaultIcon(){
   if(typeof L === "undefined" || ensureLeafletDefaultIcon._done) return;
@@ -1534,66 +1582,124 @@ function ensureLeafletDefaultIcon(){
 }
 
 function initOfficeMap(id, coords){
-  if(typeof L === "undefined") return null; // Leaflet hali yuklanmagan bo'lsa jim o'tkazib yuboramiz
+  if(typeof L === "undefined") return null;
   ensureLeafletDefaultIcon();
   const el = document.getElementById("map-" + id);
-  if(!el || el._leaflet_id) return officeMaps[id] ? officeMaps[id].map : null;
+  if(!el || el._leaflet_id) return officeMaps[id] || null;
 
-  const map = L.map(el, { attributionControl: false }).setView([coords.lat, coords.lng], 15);
+  const map = L.map(el, { attributionControl: false, zoomControl:false, dragging:false, scrollWheelZoom:false, tap:false })
+    .setView([coords.lat, coords.lng], 15);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19,
-    attribution: "&copy; OpenStreetMap"
+    maxZoom: 19, attribution: "&copy; OpenStreetMap"
   }).addTo(map);
   L.control.attribution({ prefix: false }).addAttribution("© OpenStreetMap").addTo(map);
   L.marker([coords.lat, coords.lng]).addTo(map);
 
-  officeMaps[id] = { map, routeLayer: null, userMarker: null };
+  officeMaps[id] = map;
   return map;
 }
 
-/* Foydalanuvchining joriy joylashuvidan ofisgacha haqiqiy yo'l chizig'ini
-   xaritaning o'zida chizadi (OSRM — bepul, ochiq marshrutlash xizmati).
-   Hech qanday tashqi ilova ochilmaydi, mijoz saytdan chiqmaydi. */
-async function showRouteOnMap(id, coords){
-  const statusEl = document.getElementById("route-status-" + id);
-  const state = officeMaps[id];
-  if(!state || !state.map){ return; }
-  const map = state.map;
+/* ---- Ko'chama (maneuver) turini o'qish uchun qulay belgi va matn ---- */
+function maneuverIcon(type, modifier){
+  if(type === "depart") return "🚩";
+  if(type === "arrive") return "🏁";
+  if(type === "roundabout" || type === "rotary") return "🔄";
+  if(modifier){
+    if(modifier.indexOf("left") !== -1) return "⬅️";
+    if(modifier.indexOf("right") !== -1) return "➡️";
+    if(modifier === "straight") return "⬆️";
+    if(modifier.indexOf("uturn") !== -1) return "↩️";
+  }
+  return "⬆️";
+}
+function stepInstruction(step){
+  const name = step.name || "";
+  const type = step.maneuver.type;
+  const modifier = step.maneuver.modifier;
+  if(type === "depart") return t('routeDepart') + (name ? ` — ${name}` : "");
+  if(type === "arrive") return t('routeArrive');
+  if(type === "roundabout" || type === "rotary") return t('routeRoundabout');
+  let dir = t('routeContinue');
+  if(modifier){
+    if(modifier.indexOf("left") !== -1) dir = t('routeLeft');
+    else if(modifier.indexOf("right") !== -1) dir = t('routeRight');
+    else if(modifier === "straight") dir = t('routeStraight');
+  }
+  return name ? `${dir} — ${name}` : dir;
+}
+function formatStepDistance(m){
+  return m >= 1000 ? (m/1000).toFixed(1) + " km" : Math.round(m) + " m";
+}
 
-  if(!navigator.geolocation){
-    statusEl.textContent = t('locationError');
+/* To'liq ekranli marshrut oynasi — xarita kattalashadi, qadam-baqadam
+   piyoda yo'l ko'rsatmalari (qaysi ko'chadan, qayerga burilish) chiqadi.
+   Yuqori chapdagi ✕ tugmasi bosilganda hammasi o'z holiga qaytadi. */
+function openRouteOverlay(id, coords){
+  const overlay = document.createElement("div");
+  overlay.className = "route-overlay";
+  overlay.innerHTML = `
+    <div class="route-overlay-map" id="route-map-${id}">
+      <button type="button" class="route-close" id="route-close-btn" aria-label="close">✕</button>
+      <div class="route-stats" id="route-stats-${id}" style="display:none"></div>
+    </div>
+    <div class="route-steps" id="route-steps-${id}">
+      <div class="route-loading">${esc(t('locatingYou'))}</div>
+    </div>`;
+  document.body.appendChild(overlay);
+
+  let fullMap = null;
+  document.getElementById("route-close-btn").addEventListener("click", ()=>{
+    if(fullMap) fullMap.remove();
+    overlay.remove();
+  });
+
+  if(typeof L === "undefined" || !navigator.geolocation){
+    document.getElementById("route-steps-" + id).innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
     return;
   }
-  statusEl.textContent = t('locatingYou');
+  ensureLeafletDefaultIcon();
+  fullMap = L.map("route-map-" + id, { attributionControl: false, zoomControl: true }).setView([coords.lat, coords.lng], 15);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(fullMap);
+  L.control.attribution({ prefix: false }).addAttribution("© OpenStreetMap").addTo(fullMap);
+  L.marker([coords.lat, coords.lng]).addTo(fullMap);
 
   navigator.geolocation.getCurrentPosition(async (pos)=>{
     const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-    statusEl.textContent = t('buildingRoute');
+    const stepsBox = document.getElementById("route-steps-" + id);
+    stepsBox.innerHTML = `<div class="route-loading">${esc(t('buildingRoute'))}</div>`;
     try{
-      const url = `https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson`;
+      const url = `https://router.project-osrm.org/route/v1/foot/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson&steps=true`;
       const res = await request(url, null, { timeout: 12000, attempts: 2 });
       const data = await res.json();
       const route = data && data.routes && data.routes[0];
       if(!route) throw new Error("no route");
 
       const latlngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      if(state.routeLayer) map.removeLayer(state.routeLayer);
-      if(state.userMarker) map.removeLayer(state.userMarker);
-
-      state.routeLayer = L.polyline(latlngs, { color:"#e8354f", weight:5, opacity:.85 }).addTo(map);
-      state.userMarker = L.circleMarker([uLat, uLng], {
-        radius:8, color:"#fff", weight:3, fillColor:"#3b82f6", fillOpacity:1
-      }).addTo(map).bindPopup(t('youAreHere'));
-      map.fitBounds(state.routeLayer.getBounds(), { padding:[28,28] });
+      L.polyline(latlngs, { color:"#e8354f", weight:5, opacity:.85 }).addTo(fullMap);
+      L.circleMarker([uLat, uLng], { radius:8, color:"#fff", weight:3, fillColor:"#3b82f6", fillOpacity:1 })
+        .addTo(fullMap).bindPopup(t('youAreHere'));
+      fullMap.fitBounds(latlngs, { padding:[30,30] });
 
       const km = (route.distance / 1000).toFixed(1);
       const min = Math.round(route.duration / 60);
-      statusEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
+      const statsEl = document.getElementById("route-stats-" + id);
+      statsEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
+      statsEl.style.display = "block";
+
+      const steps = (route.legs && route.legs[0] && route.legs[0].steps) || [];
+      stepsBox.innerHTML = steps.map(s => `
+        <div class="route-step">
+          <span class="route-step-icon">${maneuverIcon(s.maneuver.type, s.maneuver.modifier)}</span>
+          <div>
+            <div class="route-step-text">${esc(stepInstruction(s))}</div>
+            <div class="route-step-dist">${formatStepDistance(s.distance)}</div>
+          </div>
+        </div>`).join("");
     }catch(e){
-      statusEl.textContent = t('locationError');
+      stepsBox.innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
     }
   }, ()=>{
-    statusEl.textContent = t('locationError');
+    document.getElementById("route-steps-" + id).innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
   }, { enableHighAccuracy:true, timeout:10000 });
 }
 
@@ -1603,7 +1709,7 @@ function bindAddresses(){
   document.querySelectorAll("[data-route-btn]").forEach(btn=>{
     btn.addEventListener("click", ()=>{
       const id = btn.dataset.routeBtn;
-      showRouteOnMap(id, OFFICE_COORDS[id]);
+      openRouteOverlay(id, OFFICE_COORDS[id]);
     });
   });
 }
