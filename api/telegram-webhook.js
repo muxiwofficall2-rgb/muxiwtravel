@@ -218,7 +218,20 @@ export default async function handler(req, res) {
 
   if (WEBHOOK_SECRET) {
     const incoming = (req.headers["x-telegram-bot-api-secret-token"] || "").trim();
-    if (incoming !== WEBHOOK_SECRET) {
+    // Compared case-insensitively on purpose: iOS (and some other mobile
+    // keyboards) auto-capitalize the first letter typed into a plain text
+    // field by default, which is exactly what happened when the secret was
+    // entered into Vercel's Environment Variables form on a phone — the
+    // value silently became "Omadspb" instead of "omadspb" while the copy
+    // used to register the webhook with Telegram stayed lowercase, and an
+    // exact-case match then rejected every single real request from
+    // Telegram with a 401, which is what the "Tayyor" button hanging
+    // forever traced back to. A secret's job here is just to stop a
+    // random guesser from finding this URL and forging status updates;
+    // case doesn't meaningfully add to that for a word-based secret like
+    // this, so comparing case-insensitively removes an entire class of
+    // this kind of mobile-input friction for free.
+    if (incoming.toLowerCase() !== WEBHOOK_SECRET.toLowerCase()) {
       console.error(
         "[telegram-webhook] Secret mismatch — got header of length",
         incoming.length,
