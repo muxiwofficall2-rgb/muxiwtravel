@@ -348,10 +348,13 @@
     margin-top:12px;border-radius:14px;overflow:hidden;
     border:1px solid var(--glass-border);
     background:var(--surface-hover);
+    height:200px;width:100%;
   }
-  .office-map iframe{display:block;width:100%;border:none;}
-  .office-map-actions{display:flex;flex-direction:column;gap:8px;margin-top:10px;}
-  .office-map-actions .glass-btn{padding:11px 14px;font-size:14px;}
+  .office-map .leaflet-container{background:var(--surface-hover);font-family:inherit;}
+  .office-route-status{
+    margin-top:8px;font-size:13px;font-weight:600;color:var(--text-dim);
+    min-height:18px;text-align:center;
+  }
 
   .footer-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;line-height:1.5;}
   .footer-note.err{color:var(--accent-red);font-weight:600;}
@@ -487,6 +490,12 @@
   <path d="M12.9 13.9L9 21l-1.3-3.5L4.2 16.2 12.9 13.9z" fill="currentColor" opacity=".7"/>
 </svg>
 
+<!-- Leaflet — manzillar bo'limidagi xaritani va yo'l chizig'ini SAYT ICHIDA
+     chizish uchun. Bepul, ochiq manbali, hech qanday API kalit yoki hisob
+     talab qilmaydi, Yandex/Google/Apple'ga bog'liq emas. -->
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+
 <script>
 /* =========================================================
    OMAD TOUR — bir faylli ko'p tilli ilova (2.0)
@@ -533,10 +542,9 @@ const GROUP_LINKS = {
   consGroup: VISA_GROUP_LINK,
   notary:"https://t.me/biletispbuz"
 };
-const MAP_LINKS = { m1:"https://yandex.ru/maps/-/CLaRUCPW", m2:"https://yandex.ru/maps/-/CLBoFJ8I" };
-// Ofislarning aniq koordinatalari — sayt ichida jonli xarita ko'rsatish va
-// "Yo'l tarifini olish" tugmasi (Apple/Google xaritasini to'g'ridan-to'g'ri
-// ochish) uchun ishlatiladi.
+// Ofislarning aniq koordinatalari — sayt ichida (Leaflet + OpenStreetMap
+// orqali) jonli xarita va haqiqiy yo'l chizig'ini chizish uchun ishlatiladi.
+// Hech qanday tashqi xarita ilovasi ochilmaydi.
 const OFFICE_COORDS = {
   office1: { lat: 59.9139983, lng: 30.3160918 },
   office2: { lat: 59.9001004, lng: 30.4915802 }
@@ -613,6 +621,9 @@ const T = {
     office2:"Dybenko metro bekati, Bolshevikov shoh ko'chasi, 24-uy, 1-bino.",
     map1:"Texnologicheskiy institut metro bekati", map2:"Dybenko metro bekati",
     getDirections:"Yo'l tarifini olish", openInYandex:"Yandex xaritada ochish",
+    showRouteBtn:"Yo'l tarifini ko'rsatish", locatingYou:"Joylashuvingiz aniqlanmoqda…",
+    buildingRoute:"Yo'nalish chizilmoqda…", youAreHere:"Siz shu yerdasiz",
+    minutesShort:"daqiqa", locationError:"Joylashuvni aniqlab bo'lmadi. Brauzer sozlamalarida ruxsat berilganini tekshiring.",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
     helpPh:"Fikr-mulohazangizni shu yerga yozing", helpFieldLabel:"Fikr-mulohazangiz",
     attachedImage:"Ilova qilingan rasm",
@@ -693,6 +704,9 @@ const T = {
     office2:"Станция метро «Дыбенко», проспект Большевиков, дом 24, корпус 1.",
     map1:"Станция метро «Технологический институт»", map2:"Станция метро «Дыбенко»",
     getDirections:"Проложить маршрут", openInYandex:"Открыть в Яндекс Картах",
+    showRouteBtn:"Показать маршрут", locatingYou:"Определяем ваше местоположение…",
+    buildingRoute:"Строим маршрут…", youAreHere:"Вы здесь",
+    minutesShort:"мин", locationError:"Не удалось определить местоположение. Проверьте разрешения браузера.",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
     helpPh:"Напишите ваш отзыв здесь", helpFieldLabel:"Ваш отзыв",
     attachedImage:"Прикреплённое изображение",
@@ -773,6 +787,9 @@ const T = {
     office2:"Dybenko metro station, Bolshevikov Avenue, building 24, block 1.",
     map1:"Tekhnologicheskiy Institut metro station", map2:"Dybenko metro station",
     getDirections:"Get directions", openInYandex:"Open in Yandex Maps",
+    showRouteBtn:"Show route", locatingYou:"Locating you…",
+    buildingRoute:"Building route…", youAreHere:"You are here",
+    minutesShort:"min", locationError:"Could not determine your location. Please check your browser's location permission.",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
     helpPh:"Write your feedback here", helpFieldLabel:"Your feedback",
     attachedImage:"Attached image",
@@ -881,23 +898,6 @@ function esc(str){
 }
 function cityName(c){ return c.name[LANG] || c.name.uz; }
 function telHref(n){ return "tel:" + n.replace(/[^\d+]/g,""); }
-/* Qurilmaga qarab to'g'ri xarita ilovasini ochadi — iOS'da Apple xaritalari,
-   boshqa barcha qurilmalarda (Android, kompyuter) Google xaritalari orqali
-   joriy joylashuvdan boshlab yo'l tarifini to'g'ridan-to'g'ri ko'rsatadi. */
-function directionsHref(lat, lng){
-  const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
-  return isIOS
-    ? `https://maps.apple.com/?daddr=${lat},${lng}&dirflg=d`
-    : `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-}
-function yandexEmbedSrc(shortLink){
-  // Yandex qisqa havolasini ("https://yandex.ru/maps/-/XXXX") to'g'ridan-to'g'ri
-  // ko'milgan (iframe) xarita manziliga aylantiradi — bu Yandex'ning "Saytga
-  // qo'shish" funksiyasi ishlatadigan xuddi shu, hech qanday API kalitisiz
-  // ishlaydigan rasmiy usul.
-  const code = shortLink.split("/-/")[1] || "";
-  return `https://yandex.ru/map-widget/v1/-/${code}`;
-}
 function smsHref(n, body){ return "sms:" + n.replace(/[^\d+]/g,"") + (body ? "?body=" + encodeURIComponent(body) : ""); }
 function waHref(n, body){ return "https://wa.me/" + n.replace(/[^\d]/g,"") + (body ? "?text=" + encodeURIComponent(body) : ""); }
 function tgHref(handle, text){
@@ -1500,25 +1500,112 @@ function groupsScreen(){
   </div>`;
 }
 
-function officeMapBlock(titleKey, textKey, coords, mapLink){
+function officeMapBlock(id, titleKey, textKey, coords){
   return `<div class="addr-block">
     <b>${esc(t(titleKey))}</b><br>${esc(t(textKey))}
-    <div class="office-map">
-      <iframe src="${yandexEmbedSrc(mapLink)}" width="100%" height="180"
-        frameborder="0" loading="lazy" title="${esc(t(titleKey))}"></iframe>
-    </div>
-    <div class="office-map-actions">
-      <a class="glass-btn" href="${directionsHref(coords.lat, coords.lng)}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('getDirections'))}</span></a>
-      <a class="glass-btn" href="${mapLink}" target="_blank" rel="noopener">${iconCircle(ICONS.pin)}<span class="label">${esc(t('openInYandex'))}</span></a>
-    </div>
+    <div class="office-map" id="map-${id}"></div>
+    <button type="button" class="glass-btn glass-btn-red" data-route-btn="${id}" style="margin-top:10px">
+      ${iconCircle(ICONS.pin)}<span class="label">${esc(t('showRouteBtn'))}</span>
+    </button>
+    <div class="office-route-status" id="route-status-${id}"></div>
   </div>`;
 }
 function addressesScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('addrTitle'))}</h2>
-    ${officeMapBlock('office1title', 'office1', OFFICE_COORDS.office1, MAP_LINKS.m1)}
-    ${officeMapBlock('office2title', 'office2', OFFICE_COORDS.office2, MAP_LINKS.m2)}
+    ${officeMapBlock('office1', 'office1title', 'office1', OFFICE_COORDS.office1)}
+    ${officeMapBlock('office2', 'office2title', 'office2', OFFICE_COORDS.office2)}
   </div>`;
+}
+
+/* ================== XARITA (Leaflet — saytning o'zida, hech qanday
+   tashqi ilova ochilmaydi, Yandex/Google/Apple'ga bog'liq emas) ================== */
+const officeMaps = {}; // id -> { map, routeLayer, userMarker }
+
+function ensureLeafletDefaultIcon(){
+  if(typeof L === "undefined" || ensureLeafletDefaultIcon._done) return;
+  ensureLeafletDefaultIcon._done = true;
+  delete L.Icon.Default.prototype._getIconUrl;
+  L.Icon.Default.mergeOptions({
+    iconRetinaUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon-2x.png",
+    iconUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-icon.png",
+    shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png"
+  });
+}
+
+function initOfficeMap(id, coords){
+  if(typeof L === "undefined") return null; // Leaflet hali yuklanmagan bo'lsa jim o'tkazib yuboramiz
+  ensureLeafletDefaultIcon();
+  const el = document.getElementById("map-" + id);
+  if(!el || el._leaflet_id) return officeMaps[id] ? officeMaps[id].map : null;
+
+  const map = L.map(el, { attributionControl: false }).setView([coords.lat, coords.lng], 15);
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap"
+  }).addTo(map);
+  L.control.attribution({ prefix: false }).addAttribution("© OpenStreetMap").addTo(map);
+  L.marker([coords.lat, coords.lng]).addTo(map);
+
+  officeMaps[id] = { map, routeLayer: null, userMarker: null };
+  return map;
+}
+
+/* Foydalanuvchining joriy joylashuvidan ofisgacha haqiqiy yo'l chizig'ini
+   xaritaning o'zida chizadi (OSRM — bepul, ochiq marshrutlash xizmati).
+   Hech qanday tashqi ilova ochilmaydi, mijoz saytdan chiqmaydi. */
+async function showRouteOnMap(id, coords){
+  const statusEl = document.getElementById("route-status-" + id);
+  const state = officeMaps[id];
+  if(!state || !state.map){ return; }
+  const map = state.map;
+
+  if(!navigator.geolocation){
+    statusEl.textContent = t('locationError');
+    return;
+  }
+  statusEl.textContent = t('locatingYou');
+
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
+    statusEl.textContent = t('buildingRoute');
+    try{
+      const url = `https://router.project-osrm.org/route/v1/driving/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson`;
+      const res = await request(url, null, { timeout: 12000, attempts: 2 });
+      const data = await res.json();
+      const route = data && data.routes && data.routes[0];
+      if(!route) throw new Error("no route");
+
+      const latlngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      if(state.routeLayer) map.removeLayer(state.routeLayer);
+      if(state.userMarker) map.removeLayer(state.userMarker);
+
+      state.routeLayer = L.polyline(latlngs, { color:"#e8354f", weight:5, opacity:.85 }).addTo(map);
+      state.userMarker = L.circleMarker([uLat, uLng], {
+        radius:8, color:"#fff", weight:3, fillColor:"#3b82f6", fillOpacity:1
+      }).addTo(map).bindPopup(t('youAreHere'));
+      map.fitBounds(state.routeLayer.getBounds(), { padding:[28,28] });
+
+      const km = (route.distance / 1000).toFixed(1);
+      const min = Math.round(route.duration / 60);
+      statusEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
+    }catch(e){
+      statusEl.textContent = t('locationError');
+    }
+  }, ()=>{
+    statusEl.textContent = t('locationError');
+  }, { enableHighAccuracy:true, timeout:10000 });
+}
+
+function bindAddresses(){
+  initOfficeMap("office1", OFFICE_COORDS.office1);
+  initOfficeMap("office2", OFFICE_COORDS.office2);
+  document.querySelectorAll("[data-route-btn]").forEach(btn=>{
+    btn.addEventListener("click", ()=>{
+      const id = btn.dataset.routeBtn;
+      showRouteOnMap(id, OFFICE_COORDS[id]);
+    });
+  });
 }
 
 function helpScreen(){
@@ -1599,6 +1686,7 @@ function bind(name, opts){
   if(name === "viza") bindViza();
   if(name === "vizaForm") bindVizaForm();
   if(name === "myVisaStatus") bindMyStatus();
+  if(name === "addresses") bindAddresses();
   if(name === "help") bindHelp();
   if(name === "news") bindNews();
   if(name === "admin") bindAdmin();
