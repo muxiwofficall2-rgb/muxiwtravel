@@ -909,9 +909,9 @@ async function notifyTelegramVisa(base64, phone, submissionId){
 
 /* ================== RASM: SIQISH + YUKLASH ================== */
 /* Vercel so'rov tanasi ~4.5MB bilan cheklangan, base64 esa hajmni ~33% oshiradi.
-   Shu sabab rasmni mijoz tomonida 900KB atrofigacha siqamiz — yuklash bir necha
-   soniyada tugaydi va hujjat matni o'qilarli bo'lib qoladi. */
-const TARGET_B64 = 900000;
+   Nishonlangan hajmni ilgarigidan taxminan yarmiga tushirdik — hujjat matni
+   hamon aniq o'qiladi, lekin siqish va yuklash sezilarli tezlashadi. */
+const TARGET_B64 = 550000;
 
 function loadImage(file){
   return new Promise((resolve, reject)=>{
@@ -937,7 +937,7 @@ function toJpeg(img, maxDim, quality){
 }
 async function compressImage(file){
   const img = await loadImage(file);
-  const ladder = [[1500,.74],[1280,.7],[1080,.64],[900,.56],[720,.5],[560,.45]];
+  const ladder = [[1300,.72],[1100,.68],[950,.6],[800,.52],[650,.46],[500,.4]];
   let out = toJpeg(img, ladder[0][0], ladder[0][1]);
   for(let i = 1; i < ladder.length && out.length > TARGET_B64; i++){
     out = toJpeg(img, ladder[i][0], ladder[i][1]);
