@@ -3,29 +3,54 @@
 // notification message, and updates that request's status in Upstash Redis
 // (connected via Vercel Storage — same database used by /api/kv.js).
 //
-// IMPORTANT UX FIX: Telegram shows a spinning "loading" state on a tapped
-// button until OUR server calls answerCallbackQuery — and only for that
-// specific call, nothing else. The previous version did the slow part
-// (looking up the record in Redis, saving it, possibly retrying a few
-// times) BEFORE answering, so on any small network hiccup the button would
-// visibly hang. Now we answer FIRST — within milliseconds of receiving the
-// tap — and do the actual database update afterward, then reflect the
-// final result by editing the message caption a moment later. The button
-// itself is never blocked on anything slow again.
+// ---------------------------------------------------------------------
+// SELF-DIAGNOSTIC: open this URL directly in any browser (a plain GET,
+// which Telegram itself never sends — it only ever POSTs here) to check,
+// in one glance, whether the server-side configuration is actually wired
+// up correctly in the CURRENTLY DEPLOYED version:
+//
+//   https://YOUR_DOMAIN/api/telegram-webhook
+//
+// It reports true/false for each required setting (never the actual
+// secret values) plus whether it can reach Telegram and Redis right now.
+// This exists specifically so a broken button can be diagnosed in one
+// step instead of guessing — if any of these say false, that is the bug.
+// ---------------------------------------------------------------------
+//
+// IMPORTANT UX NOTE: Telegram shows a spinning "loading" state on a tapped
+// button until OUR server calls answerCallbackQuery — and ONLY until that
+// specific call completes. If that call never happens (wrong token, wrong
+// secret, function crashed before reaching it, etc.), Telegram's client
+// clears the spinner on its own after its own internal timeout, with no
+// visible error — which looks exactly like "it just stops loading and
+// nothing happened." That is why this file now also logs a clear reason
+// to Vercel's function logs every time it can't complete the flow, and
+// why the diagnostic endpoint above exists — so that failure mode is no
+// longer silent.
+//
+// We call (and await) answerCallbackQuery FIRST, before doing any
+// database work, so the button reacts immediately. We do NOT send our own
+// HTTP response back to Telegram early and keep working "in the
+// background" afterward — Vercel's serverless platform only guarantees
+// execution continues until the handler function itself finishes
+// (returns), not merely until res.end() is called, so ending the response
+// early and continuing afterward is not reliable. Everything therefore
+// happens in one continuous sequence, and res.end() is only ever called
+// once, at the very end, after the database update has actually finished.
 //
 // SECURITY:
 // 1. The bot token is read from the TELEGRAM_BOT_TOKEN environment variable
-//    (never hardcoded), for the same reason as notify-telegram.js — a token
-//    committed to a public repo gets scraped and hijacked within minutes.
+//    (never hardcoded) — a token committed to a public repo gets scraped
+//    and hijacked within minutes, which is what happened to the original
+//    token before this was set up.
 // 2. This URL is public on the internet (Telegram must be able to reach
 //    it), so anyone who finds it could otherwise POST fake button-press
-//    payloads and silently flip the status of any visa request. To stop
-//    that, Telegram lets you attach a "secret token" when you register the
-//    webhook; Telegram then includes that same secret in a header on every
-//    real request, and we reject anything that doesn't match. Set
-//    TELEGRAM_WEBHOOK_SECRET in Vercel to any random string of your
-//    choosing, then register it with Telegram — see the one-time setup
-//    instructions below.
+//    payloads and silently flip the status of any visa request. Telegram
+//    lets you attach a "secret token" when you register the webhook, and
+//    then includes that same secret in a header on every real request —
+//    we reject anything that doesn't match. Whitespace around the value
+//    is trimmed before comparing, since that is an easy mistake to make
+//    when copy-pasting a value into a form on a phone.
 //
 // ---------------------------------------------------------------------
 // ONE-TIME SETUP (only ever needs to be done once, or again if you rotate
@@ -35,12 +60,15 @@
 //   https://api.telegram.org/bot<YOUR_BOT_TOKEN>/setWebhook?url=https://YOUR_DOMAIN/api/telegram-webhook&secret_token=YOUR_SECRET
 //
 // Telegram will reply {"ok":true,"result":true,...} if it worked.
-// (YOUR_SECRET must be the exact same value you set as the
-// TELEGRAM_WEBHOOK_SECRET environment variable in Vercel.)
+// (YOUR_SECRET must be the exact same value as the TELEGRAM_WEBHOOK_SECRET
+// environment variable in Vercel — check the diagnostic endpoint above if
+// unsure whether it's set at all.)
 // ---------------------------------------------------------------------
 
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET
+  ? process.env.TELEGRAM_WEBHOOK_SECRET.trim()
+  : "";
 
 export const maxDuration = 20;
 
@@ -66,7 +94,10 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
 }
 
 async function tg(method, payload) {
-  if (!BOT_TOKEN) return null;
+  if (!BOT_TOKEN) {
+    console.error("[telegram-webhook] TELEGRAM_BOT_TOKEN is not set — cannot call", method);
+    return null;
+  }
   try {
     const r = await fetchWithTimeout(
       `https://api.telegram.org/bot${BOT_TOKEN}/${method}`,
@@ -77,26 +108,42 @@ async function tg(method, payload) {
       },
       6000
     );
-    return await r.json().catch(() => null);
+    const data = await r.json().catch(() => null);
+    if (!r.ok || !data || data.ok !== true) {
+      console.error(
+        `[telegram-webhook] Telegram ${method} failed:`,
+        r.status,
+        data && data.description
+      );
+    }
+    return data;
   } catch (e) {
+    console.error(`[telegram-webhook] Telegram ${method} threw:`, e && e.message);
     return null;
   }
 }
 
 async function fetchVisaList() {
   const { url, token } = redisConfig();
-  if (!url || !token) return [];
+  if (!url || !token) {
+    console.error("[telegram-webhook] Redis env vars missing (KV_REST_API_URL / KV_REST_API_TOKEN)");
+    return [];
+  }
   const r = await fetchWithTimeout(
     `${url}/get/visa_submissions`,
     { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
     6000
   );
-  if (!r.ok) return [];
+  if (!r.ok) {
+    console.error("[telegram-webhook] Redis GET failed:", r.status);
+    return [];
+  }
   const data = await r.json();
   if (!data.result) return [];
   try {
     return JSON.parse(data.result);
   } catch (e) {
+    console.error("[telegram-webhook] Redis GET returned unparseable JSON");
     return [];
   }
 }
@@ -113,43 +160,88 @@ async function saveVisaList(list) {
     },
     6000
   );
+  if (!r.ok) {
+    console.error("[telegram-webhook] Redis SET failed:", r.status);
+  }
   return r.ok;
 }
 
-export default async function handler(req, res) {
-  if (req.method !== "POST") {
-    return res.status(200).end(); // Telegram just needs a 200
+// GET /api/telegram-webhook — human-facing diagnostic, see comment block above.
+async function handleDiagnostic(req, res) {
+  const { url: redisUrl, token: redisToken } = redisConfig();
+  const report = {
+    status: "diagnostic",
+    note: "Bu GET so'rovga javob — Telegram bu yerga hech qachon GET yubormaydi, faqat POST. Bu faqat siz uchun tekshiruv sahifasi.",
+    TELEGRAM_BOT_TOKEN_configured: !!BOT_TOKEN,
+    TELEGRAM_WEBHOOK_SECRET_configured: !!WEBHOOK_SECRET,
+    redis_configured: !!(redisUrl && redisToken),
+  };
+
+  if (BOT_TOKEN) {
+    const me = await tg("getMe", {});
+    report.telegram_bot_reachable = !!(me && me.ok);
+    report.telegram_bot_username = me && me.result && me.result.username;
+  } else {
+    report.telegram_bot_reachable = false;
   }
 
-  // Reject anything that doesn't carry our secret — this is what stops a
-  // random visitor (who might guess or find this URL) from forging status
-  // updates. Telegram itself always sends this header once the webhook is
-  // registered with secret_token (see setup instructions above).
+  if (redisUrl && redisToken) {
+    try {
+      const list = await fetchVisaList();
+      report.redis_reachable = true;
+      report.visa_submissions_count = list.length;
+    } catch (e) {
+      report.redis_reachable = false;
+    }
+  } else {
+    report.redis_reachable = false;
+  }
+
+  report.all_ok =
+    report.TELEGRAM_BOT_TOKEN_configured &&
+    report.TELEGRAM_WEBHOOK_SECRET_configured &&
+    report.redis_configured &&
+    report.telegram_bot_reachable &&
+    report.redis_reachable;
+
+  res.setHeader("Content-Type", "application/json; charset=utf-8");
+  return res.status(200).json(report);
+}
+
+export default async function handler(req, res) {
+  if (req.method === "GET") {
+    return handleDiagnostic(req, res);
+  }
+  if (req.method !== "POST") {
+    return res.status(200).end();
+  }
+
   if (WEBHOOK_SECRET) {
-    const incoming = req.headers["x-telegram-bot-api-secret-token"];
+    const incoming = (req.headers["x-telegram-bot-api-secret-token"] || "").trim();
     if (incoming !== WEBHOOK_SECRET) {
+      console.error(
+        "[telegram-webhook] Secret mismatch — got header of length",
+        incoming.length,
+        "expected length",
+        WEBHOOK_SECRET.length
+      );
       return res.status(401).end();
     }
+  } else {
+    console.error("[telegram-webhook] WARNING: TELEGRAM_WEBHOOK_SECRET is not set — accepting request unverified.");
   }
 
   const update = req.body;
   const cq = update && update.callback_query;
 
   if (cq && cq.data && cq.data.startsWith("status:")) {
-    // STEP 1 — answer immediately, and WAIT for Telegram to confirm it
-    // received the answer. This is the only network call that determines
-    // how long the spinner stays on the button, so it happens before any
-    // database work — not a fire-and-forget call, so there's no ambiguity
-    // about whether it actually went out before we move on.
-    await tg("answerCallbackQuery", {
+    const ack = await tg("answerCallbackQuery", {
       callback_query_id: cq.id,
       text: "Qabul qilindi, yangilanmoqda…",
     });
-
-    // Respond to Telegram's webhook delivery right away too — everything
-    // from here on runs as best-effort background work that updates the
-    // message a moment later, decoupled from the tap itself.
-    res.status(200).end();
+    if (!ack || ack.ok !== true) {
+      console.error("[telegram-webhook] answerCallbackQuery did not succeed — check TELEGRAM_BOT_TOKEN.");
+    }
 
     try {
       const [, idStr, status] = cq.data.split(":");
@@ -165,6 +257,7 @@ export default async function handler(req, res) {
       }
 
       if (!item) {
+        console.error("[telegram-webhook] visa submission id not found:", id);
         if (cq.message) {
           await tg("editMessageCaption", {
             chat_id: cq.message.chat.id,
@@ -175,7 +268,7 @@ export default async function handler(req, res) {
             reply_markup: cq.message.reply_markup,
           });
         }
-        return;
+        return res.status(200).end();
       }
 
       item.status = status;
@@ -196,11 +289,12 @@ export default async function handler(req, res) {
           reply_markup: cq.message.reply_markup,
         });
       }
+
+      console.log("[telegram-webhook] status update complete:", { id, status, saved });
     } catch (e) {
-      // Already answered the tap and responded to Telegram — nothing left
-      // to do but swallow the error so it doesn't create a retry storm.
+      console.error("[telegram-webhook] unexpected error:", e && e.stack);
     }
-    return;
+    return res.status(200).end();
   }
 
   res.status(200).end();
