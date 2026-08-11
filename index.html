@@ -536,6 +536,12 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
+<!-- Yandex Maps API — faqat "Marshrut" oynasi uchun: haqiqiy avtobus/metro/
+     peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
+     uchun eng to'liq jamoat transporti ma'lumotlariga ega xizmat). Bepul
+     kalit, kuniga 25 000 so'rovgacha. -->
+<script src="https://api-maps.yandex.ru/2.1/?apikey=7b53b62a-2e25-4f19-a23f-55548538b722&amp;lang=ru_RU"></script>
+
 <script>
 /* =========================================================
    OMAD TOUR — bir faylli ko'p tilli ilova (2.0)
@@ -665,6 +671,8 @@ const T = {
     routeDepart:"Boshlang", routeArrive:"Siz manzilga yetib keldingiz", routeLeft:"chapga buriling",
     routeRight:"o'ngga buriling", routeStraight:"to'g'ri davom eting", routeContinue:"davom eting",
     routeRoundabout:"aylanma yo'ldan o'ting",
+    routeWalk:"Piyoda yuring", routeTransferAt:"Peresadka", routeWait:"Kutish", routeTransport:"Transportda boring",
+    noTransitRoute:"Bu yo'nalish uchun jamoat transporti topilmadi. Piyoda boring yoki taksidan foydalaning.",
     buildingRoute:"Yo'nalish chizilmoqda…", youAreHere:"Siz shu yerdasiz",
     minutesShort:"daqiqa", locationError:"Joylashuvni aniqlab bo'lmadi. Brauzer sozlamalarida ruxsat berilganini tekshiring.",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
@@ -751,6 +759,8 @@ const T = {
     routeDepart:"Начните движение", routeArrive:"Вы прибыли на место", routeLeft:"поверните налево",
     routeRight:"поверните направо", routeStraight:"продолжайте прямо", routeContinue:"продолжайте движение",
     routeRoundabout:"проедьте через круговое движение",
+    routeWalk:"Идите пешком", routeTransferAt:"Пересадка", routeWait:"Ожидание", routeTransport:"Поезжайте на транспорте",
+    noTransitRoute:"Маршрут общественного транспорта не найден. Идите пешком или воспользуйтесь такси.",
     buildingRoute:"Строим маршрут…", youAreHere:"Вы здесь",
     minutesShort:"мин", locationError:"Не удалось определить местоположение. Проверьте разрешения браузера.",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
@@ -837,6 +847,8 @@ const T = {
     routeDepart:"Start", routeArrive:"You have arrived", routeLeft:"turn left",
     routeRight:"turn right", routeStraight:"continue straight", routeContinue:"continue",
     routeRoundabout:"go through the roundabout",
+    routeWalk:"Walk", routeTransferAt:"Transfer", routeWait:"Wait", routeTransport:"Take transport",
+    noTransitRoute:"No public transit route found. Walk instead or use a taxi.",
     buildingRoute:"Building route…", youAreHere:"You are here",
     minutesShort:"min", locationError:"Could not determine your location. Please check your browser's location permission.",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
@@ -1600,39 +1612,23 @@ function initOfficeMap(id, coords){
 }
 
 /* ---- Ko'chama (maneuver) turini o'qish uchun qulay belgi va matn ---- */
-function maneuverIcon(type, modifier){
-  if(type === "depart") return "🚩";
-  if(type === "arrive") return "🏁";
-  if(type === "roundabout" || type === "rotary") return "🔄";
-  if(modifier){
-    if(modifier.indexOf("left") !== -1) return "⬅️";
-    if(modifier.indexOf("right") !== -1) return "➡️";
-    if(modifier === "straight") return "⬆️";
-    if(modifier.indexOf("uturn") !== -1) return "↩️";
-  }
-  return "⬆️";
+function segmentIcon(type){
+  if(type === "walk") return "🚶";
+  if(type === "transport") return "🚌";
+  if(type === "transfer") return "🔄";
+  if(type === "wait") return "⏳";
+  return "•";
 }
-function stepInstruction(step){
-  const name = step.name || "";
-  const type = step.maneuver.type;
-  const modifier = step.maneuver.modifier;
-  if(type === "depart") return t('routeDepart') + (name ? ` — ${name}` : "");
-  if(type === "arrive") return t('routeArrive');
-  if(type === "roundabout" || type === "rotary") return t('routeRoundabout');
-  let dir = t('routeContinue');
-  if(modifier){
-    if(modifier.indexOf("left") !== -1) dir = t('routeLeft');
-    else if(modifier.indexOf("right") !== -1) dir = t('routeRight');
-    else if(modifier === "straight") dir = t('routeStraight');
-  }
-  return name ? `${dir} — ${name}` : dir;
-}
-function formatStepDistance(m){
-  return m >= 1000 ? (m/1000).toFixed(1) + " km" : Math.round(m) + " m";
+function segmentLabel(type){
+  if(type === "walk") return t('routeWalk');
+  if(type === "transfer") return t('routeTransferAt');
+  if(type === "wait") return t('routeWait');
+  return t('routeTransport');
 }
 
-/* To'liq ekranli marshrut oynasi — xarita kattalashadi, qadam-baqadam
-   piyoda yo'l ko'rsatmalari (qaysi ko'chadan, qayerga burilish) chiqadi.
+/* To'liq ekranli marshrut oynasi — xarita kattalashadi, HAQIQIY jamoat
+   transporti (avtobus/tramvay/metro) va peresadkalar ko'rsatiladi (Yandex
+   Maps API — Sankt-Peterburg uchun eng to'liq transport ma'lumotlari).
    Yuqori chapdagi ✕ tugmasi bosilganda hammasi o'z holiga qaytadi. */
 function openRouteOverlay(id, coords){
   const overlay = document.createElement("div");
@@ -1647,57 +1643,75 @@ function openRouteOverlay(id, coords){
     </div>`;
   document.body.appendChild(overlay);
 
-  let fullMap = null;
+  let yMap = null;
   document.getElementById("route-close-btn").addEventListener("click", ()=>{
-    if(fullMap) fullMap.remove();
+    if(yMap) yMap.destroy();
     overlay.remove();
   });
 
-  if(typeof L === "undefined" || !navigator.geolocation){
+  if(typeof ymaps === "undefined" || !navigator.geolocation){
     document.getElementById("route-steps-" + id).innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
     return;
   }
-  ensureLeafletDefaultIcon();
-  fullMap = L.map("route-map-" + id, { attributionControl: false, zoomControl: true }).setView([coords.lat, coords.lng], 15);
-  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom: 19 }).addTo(fullMap);
-  L.control.attribution({ prefix: false }).addAttribution("© OpenStreetMap").addTo(fullMap);
-  L.marker([coords.lat, coords.lng]).addTo(fullMap);
 
-  navigator.geolocation.getCurrentPosition(async (pos)=>{
+  navigator.geolocation.getCurrentPosition((pos)=>{
     const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
     const stepsBox = document.getElementById("route-steps-" + id);
     stepsBox.innerHTML = `<div class="route-loading">${esc(t('buildingRoute'))}</div>`;
-    try{
-      const url = `https://router.project-osrm.org/route/v1/foot/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson&steps=true`;
-      const res = await request(url, null, { timeout: 12000, attempts: 2 });
-      const data = await res.json();
-      const route = data && data.routes && data.routes[0];
-      if(!route) throw new Error("no route");
 
-      const latlngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      L.polyline(latlngs, { color:"#e8354f", weight:5, opacity:.85 }).addTo(fullMap);
-      L.circleMarker([uLat, uLng], { radius:8, color:"#fff", weight:3, fillColor:"#3b82f6", fillOpacity:1 })
-        .addTo(fullMap).bindPopup(t('youAreHere'));
-      fullMap.fitBounds(latlngs, { padding:[30,30] });
+    ymaps.ready(function(){
+      yMap = new ymaps.Map("route-map-" + id, {
+        center: [coords.lat, coords.lng],
+        zoom: 13,
+        controls: ["zoomControl"]
+      });
 
-      const km = (route.distance / 1000).toFixed(1);
-      const min = Math.round(route.duration / 60);
-      const statsEl = document.getElementById("route-stats-" + id);
-      statsEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
-      statsEl.style.display = "block";
+      const multiRoute = new ymaps.multiRouter.MultiRoute({
+        referencePoints: [[uLat, uLng], [coords.lat, coords.lng]],
+        params: { routingMode: "masstransit" }
+      }, {
+        boundsAutoApply: true,
+        wayPointStartIconColor: "#3b82f6",
+        wayPointFinishIconColor: "#e8354f"
+      });
+      yMap.geoObjects.add(multiRoute);
 
-      const steps = (route.legs && route.legs[0] && route.legs[0].steps) || [];
-      stepsBox.innerHTML = steps.map(s => `
-        <div class="route-step">
-          <span class="route-step-icon">${maneuverIcon(s.maneuver.type, s.maneuver.modifier)}</span>
-          <div>
-            <div class="route-step-text">${esc(stepInstruction(s))}</div>
-            <div class="route-step-dist">${formatStepDistance(s.distance)}</div>
-          </div>
-        </div>`).join("");
-    }catch(e){
-      stepsBox.innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
-    }
+      multiRoute.model.events.add("requestsuccess", function(){
+        const activeRoute = multiRoute.getActiveRoute();
+        if(!activeRoute){
+          stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+          return;
+        }
+        const statsEl = document.getElementById("route-stats-" + id);
+        statsEl.textContent = activeRoute.properties.get("duration").text;
+        statsEl.style.display = "block";
+
+        let stepsHtml = "";
+        activeRoute.getPaths().each(function(path){
+          path.getSegments().each(function(segment){
+            const segType = segment.properties.get("type");
+            const distObj = segment.properties.get("distance");
+            const durObj = segment.properties.get("duration");
+            let mainText = segment.properties.get("text") || segmentLabel(segType);
+            const metaParts = [];
+            if(distObj && distObj.text) metaParts.push(distObj.text);
+            if(durObj && durObj.text) metaParts.push(durObj.text);
+            stepsHtml += `<div class="route-step">
+              <span class="route-step-icon">${segmentIcon(segType)}</span>
+              <div>
+                <div class="route-step-text">${esc(mainText)}</div>
+                ${metaParts.length ? `<div class="route-step-dist">${esc(metaParts.join(" · "))}</div>` : ""}
+              </div>
+            </div>`;
+          });
+        });
+        stepsBox.innerHTML = stepsHtml || `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+      });
+
+      multiRoute.model.events.add("requestfail", function(){
+        stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+      });
+    });
   }, ()=>{
     document.getElementById("route-steps-" + id).innerHTML = `<div class="route-loading">${esc(t('locationError'))}</div>`;
   }, { enableHighAccuracy:true, timeout:10000 });
