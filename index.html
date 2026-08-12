@@ -1631,20 +1631,44 @@ function segmentIcon(type){
   if(type === "wait") return "⏳";
   return "•";
 }
-/* Yandex requestfail hodisasidan haqiqiy xato sababini o'qishga urinadi —
-   "topilmadi" bilan "kalitda ruxsat yo'q" kabi holatlarni farqlash uchun. */
+/* Yandex requestfail hodisasidan HAQIQIY xato sababini iloji boricha
+   to'liq o'qishga urinadi — turli mumkin bo'lgan joylardan qidiradi,
+   chunki Yandex xato obyektining tuzilishi holatga qarab farq qiladi. */
 function describeRouteError(e){
+  const parts = [];
   try{
     if(e && typeof e.get === "function"){
       const err = e.get("error");
-      if(err){
-        if(typeof err === "string") return err;
-        if(err.message) return err.message;
-        try{ return JSON.stringify(err); }catch(_){}
+      if(err !== undefined && err !== null){
+        if(typeof err === "string"){
+          parts.push("error=" + err);
+        }else if(typeof err === "object"){
+          if(err.name) parts.push("name=" + err.name);
+          if(err.message) parts.push("message=" + err.message);
+          if(err.displayMessage) parts.push("displayMessage=" + err.displayMessage);
+          if(err.originalError) parts.push("originalError=" + String(err.originalError));
+          // Qolgan barcha o'z xususiyatlarini ham qo'shamiz — nomini bilmagan
+          // maydonlarni ham ko'rish uchun.
+          try{
+            Object.keys(err).forEach(k=>{
+              if(["name","message","displayMessage","originalError"].indexOf(k) === -1){
+                let v; try{ v = JSON.stringify(err[k]); }catch(_){ v = String(err[k]); }
+                parts.push(k + "=" + v);
+              }
+            });
+          }catch(_){}
+        }
       }
+      // Model holatidagi boshqa foydali maydonlarni ham tekshiramiz.
+      try{
+        const state = e.get("state");
+        if(state) parts.push("state=" + state);
+      }catch(_){}
     }
-  }catch(_){}
-  return "no details";
+  }catch(outerErr){
+    parts.push("describeRouteError threw: " + String(outerErr && outerErr.message || outerErr));
+  }
+  return parts.length ? parts.join(" | ") : "no error details available";
 }
 function segmentLabel(type){
   if(type === "walk") return t('routeWalk');
