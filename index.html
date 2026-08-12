@@ -388,6 +388,47 @@
     animation:liveBadgePulse 1.6s ease-in-out infinite;
   }
   @keyframes liveBadgePulse{0%,100%{opacity:1;}50%{opacity:.6;}}
+
+  .nav-status{
+    position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:50%;
+    transform:translateX(-50%);z-index:500;white-space:nowrap;
+    color:#fff;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;
+    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
+  }
+  .nav-status.ok{background:rgba(20,120,70,.82);}
+  .nav-status.off{background:rgba(200,30,55,.85);}
+
+  .nav-arrow-wrap{background:none;border:none;}
+  .nav-arrow{width:42px;height:42px;transition:transform .35s ease;}
+  .nav-arrow svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45));}
+
+  .route-modes{
+    display:flex;gap:8px;padding:10px 14px;background:var(--bg-2);
+    border-top:1px solid var(--glass-border);
+  }
+  .route-mode-btn{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    padding:9px 4px;border-radius:14px;cursor:pointer;font-family:inherit;
+    border:1.5px solid var(--glass-border);background:var(--glass);color:var(--text);
+    transition:border-color .15s,background .15s,color .15s;
+  }
+  .route-mode-btn.selected{
+    border-color:var(--accent-red);color:var(--accent-red);background:rgba(232,53,79,.10);
+  }
+  .route-mode-icon{font-size:20px;line-height:1;}
+  .route-mode-label{font-size:11px;font-weight:700;}
+
+  .nav-panel{padding:4px 2px;}
+  .nav-panel-row{
+    display:flex;justify-content:space-between;align-items:center;
+    padding:12px 0;border-bottom:1px solid var(--glass-border);font-size:15px;
+  }
+  .nav-panel-k{color:var(--text-dim);font-weight:600;}
+  .nav-panel-hint{
+    margin-top:12px;font-size:12.5px;line-height:1.5;color:var(--text-dim);
+    background:var(--glass);border:1px solid var(--glass-border);
+    border-radius:12px;padding:10px 12px;
+  }
   .route-steps{
     flex:1 1 48%;overflow-y:auto;background:var(--bg-2);
     padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 20px);
@@ -700,6 +741,10 @@ const T = {
     noTransitRoute:"Bu yo'nalish uchun jamoat transporti topilmadi. Piyoda boring yoki taksidan foydalaning.",
     pedestrianFallbackNote:"Bu yo'nalish uchun jamoat transporti tavsiya etilmadi — piyoda yo'l ko'rsatilmoqda.",
     buildingRoute:"Yo'nalish chizilmoqda…", youAreHere:"Siz shu yerdasiz", liveTracking:"Jonli kuzatuv",
+    modeTransit:"Transport", modeCar:"Avtomobil", modeWalk:"Piyoda", modeScooter:"Samokat",
+    onRoute:"Yo'lda ketyapsiz", offRoute:"Yo'ldan chetga chiqdingiz",
+    distanceLabel:"Masofa", timeLabel:"Vaqt",
+    navHint:"Strelka harakat yo'nalishingizni ko'rsatadi. Yo'lda bo'lsangiz yashil, chetga chiqsangiz qizil bo'ladi.",
     inAppRouteWarning:"Sayt ilova ichidagi brauzerda ochilgan — xarita va joylashuv cheklangan ishlashi mumkin. To'liq ishlashi uchun havolani Safari yoki Chrome'da oching.",
     minutesShort:"daqiqa", locationError:"Joylashuvni aniqlab bo'lmadi. Brauzer sozlamalarida ruxsat berilganini tekshiring.",
     helpText:"Siz \"Yordam\" bo'limidasiz. Bu yerda sayt faoliyati, xizmat sifati yoki boshqa mavzular yuzasidan fikr va takliflaringizni qoldirishingiz mumkin.",
@@ -790,6 +835,10 @@ const T = {
     noTransitRoute:"Маршрут общественного транспорта не найден. Идите пешком или воспользуйтесь такси.",
     pedestrianFallbackNote:"Общественный транспорт для этого маршрута не рекомендован — показан пеший путь.",
     buildingRoute:"Строим маршрут…", youAreHere:"Вы здесь", liveTracking:"Live-отслеживание",
+    modeTransit:"Транспорт", modeCar:"Автомобиль", modeWalk:"Пешком", modeScooter:"Самокат",
+    onRoute:"Вы на маршруте", offRoute:"Вы отклонились от маршрута",
+    distanceLabel:"Расстояние", timeLabel:"Время",
+    navHint:"Стрелка показывает направление движения. На маршруте — зелёная, при отклонении — красная.",
     inAppRouteWarning:"Сайт открыт во встроенном браузере приложения — карта и геолокация могут работать ограниченно. Для полной работы откройте ссылку в Safari или Chrome.",
     minutesShort:"мин", locationError:"Не удалось определить местоположение. Проверьте разрешения браузера.",
     helpText:"Вы находитесь в разделе «Помощь». Здесь вы можете оставить отзыв о работе сайта, качестве обслуживания или поделиться предложениями.",
@@ -880,6 +929,10 @@ const T = {
     noTransitRoute:"No public transit route found. Walk instead or use a taxi.",
     pedestrianFallbackNote:"Public transit wasn't recommended for this route — showing the walking path instead.",
     buildingRoute:"Building route…", youAreHere:"You are here", liveTracking:"Live tracking",
+    modeTransit:"Transit", modeCar:"Car", modeWalk:"Walk", modeScooter:"Scooter",
+    onRoute:"On route", offRoute:"Off route",
+    distanceLabel:"Distance", timeLabel:"Time",
+    navHint:"The arrow shows your heading. Green when on route, red when you drift off.",
     inAppRouteWarning:"This site is open in an app's built-in browser \u2014 the map and location may be limited. For full functionality, open the link in Safari or Chrome.",
     minutesShort:"min", locationError:"Could not determine your location. Please check your browser's location permission.",
     helpText:"You are in the Help section. Leave feedback about the website, service quality or anything else.",
@@ -1692,158 +1745,254 @@ function formatStepDistance(m){
    Bepul, ochiq manbali (OpenStreetMap + OSRM) — hech qanday tashqi
    kalitga bog'liq emas, shuning uchun barqaror ishlaydi. Yuqori chapdagi
    ✕ tugmasi bosilganda hammasi o'z holiga qaytadi. */
+/* ================== GEO YORDAMCHILARI ================== */
+function toRad(d){ return d * Math.PI / 180; }
+function metersBetween(a, b){
+  const R = 6371000;
+  const dLat = toRad(b[0]-a[0]), dLng = toRad(b[1]-a[1]);
+  const la1 = toRad(a[0]), la2 = toRad(b[0]);
+  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(h));
+}
+/* Nuqtadan kesmagacha bo'lgan masofa (metrda) — foydalanuvchi yo'ldan
+   chetga chiqqan-chiqmaganini aniqlash uchun. */
+function metersToSegment(p, v, w){
+  const latRef = toRad((v[0]+w[0])/2);
+  const mPerLat = 111320, mPerLng = 111320 * Math.cos(latRef);
+  const px = (p[1]-v[1])*mPerLng, py = (p[0]-v[0])*mPerLat;
+  const wx = (w[1]-v[1])*mPerLng, wy = (w[0]-v[0])*mPerLat;
+  const len2 = wx*wx + wy*wy;
+  let t = len2 === 0 ? 0 : (px*wx + py*wy) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const dx = px - t*wx, dy = py - t*wy;
+  return Math.sqrt(dx*dx + dy*dy);
+}
+function metersToRoute(p, line){
+  if(!line || line.length < 2) return Infinity;
+  let best = Infinity;
+  for(let i = 0; i < line.length - 1; i++){
+    const d = metersToSegment(p, line[i], line[i+1]);
+    if(d < best) best = d;
+    if(best < 5) break;
+  }
+  return best;
+}
+/* Ikki nuqta orasidagi yo'nalish burchagi (0 = shimol) — strelkani
+   harakat yo'nalishiga qaratish uchun. */
+function bearingBetween(a, b){
+  const la1 = toRad(a[0]), la2 = toRad(b[0]), dLng = toRad(b[1]-a[1]);
+  const y = Math.sin(dLng) * Math.cos(la2);
+  const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+const ROUTE_MODES = [
+  { id:"transit",  icon:"🚎", key:"modeTransit"  },
+  { id:"car",      icon:"🚗", key:"modeCar"      },
+  { id:"walk",     icon:"🚶", key:"modeWalk"     },
+  { id:"scooter",  icon:"🛴", key:"modeScooter"  }
+];
+const OSRM_PROFILE = { car:"driving", walk:"foot", scooter:"bike" };
+const OFF_ROUTE_METERS = 60;
+
+/* To'liq ekranli navigatsiya oynasi:
+   - Transport rejimi: haqiqiy avtobus/metro/peresadka ro'yxati (Yandex).
+   - Avtomobil/piyoda/samokat: katta xarita + kompas kabi yo'nalish strelkasi.
+     Yo'l ustida bo'lsa YASHIL, chetga chiqsa QIZIL bo'lib ogohlantiradi. */
 function openRouteOverlay(id, coords){
   const overlay = document.createElement("div");
   overlay.className = "route-overlay";
   overlay.innerHTML = `
     <div class="route-overlay-map">
-      <div class="route-map-canvas" id="route-map-${id}"></div>
-      <button type="button" class="route-close" id="route-close-btn" aria-label="close">\u2715</button>
+      <div class="route-map-canvas" id="rm-leaflet-${id}"></div>
+      <div class="route-map-canvas" id="rm-yandex-${id}" style="display:none"></div>
+      <button type="button" class="route-close" id="route-close-btn" aria-label="close">✕</button>
       <div class="route-stats" id="route-stats-${id}" style="display:none"></div>
-      <div class="route-live-badge" id="route-live-${id}" style="display:none">\ud83d\udd34 ${esc(t('liveTracking'))}</div>
+      <div class="route-live-badge" id="route-live-${id}" style="display:none">🔴 ${esc(t('liveTracking'))}</div>
+      <div class="nav-status" id="nav-status-${id}" style="display:none"></div>
+    </div>
+    <div class="route-modes" id="route-modes-${id}">
+      ${ROUTE_MODES.map(m => `
+        <button type="button" class="route-mode-btn" data-mode="${m.id}">
+          <span class="route-mode-icon">${m.icon}</span>
+          <span class="route-mode-label">${esc(t(m.key))}</span>
+        </button>`).join("")}
     </div>
     <div class="route-steps" id="route-steps-${id}">
       <div class="route-loading">${esc(t('locatingYou'))}</div>
     </div>`;
   document.body.appendChild(overlay);
 
-  const stepsBox = document.getElementById("route-steps-" + id);
-  const statsEl  = document.getElementById("route-stats-" + id);
+  const stepsBox  = document.getElementById("route-steps-" + id);
+  const statsEl   = document.getElementById("route-stats-" + id);
   const liveBadge = document.getElementById("route-live-" + id);
+  const navStatus = document.getElementById("nav-status-" + id);
+  const lMapEl    = document.getElementById("rm-leaflet-" + id);
+  const yMapEl    = document.getElementById("rm-yandex-" + id);
 
-  let watchId = null;
-  let leafletMap = null;
-  let yMap = null;
+  let watchId = null, lMap = null, yMap = null;
+  let routeLine = null, routeLatLngs = null, navMarker = null;
+  let lastPos = null, mode = "transit";
 
   function stopTracking(){
     if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(_){} watchId = null; }
   }
   function cleanup(){
     stopTracking();
-    if(leafletMap){ try{ leafletMap.remove(); }catch(_){} leafletMap = null; }
+    if(lMap){ try{ lMap.remove(); }catch(_){} lMap = null; }
     if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
   }
   document.getElementById("route-close-btn").addEventListener("click", ()=>{
-    cleanup();
-    overlay.remove();
+    cleanup(); overlay.remove();
   });
 
-  // Ilova ichidagi brauzer (Telegram/Instagram/Imo va h.k.) joylashuv va
-  // qo'shimcha skriptlarni cheklashi mumkin — foydalanuvchiga buni aytamiz
-  // va havolani nusxalash tugmasini beramiz, lekin baribir urinib ko'ramiz.
   function inAppNoticeHtml(){
     if(!isInAppBrowser()) return "";
-    return `<div class="route-fallback-note">
-      ${esc(t('inAppRouteWarning'))}
+    return `<div class="route-fallback-note">${esc(t('inAppRouteWarning'))}
       <button type="button" class="glass-btn" id="route-copy-link" style="margin-top:8px">
-        <span class="label">${esc(t('copyLink'))}</span>
-      </button>
-    </div>`;
+        <span class="label">${esc(t('copyLink'))}</span></button></div>`;
   }
   function wireCopyLink(){
     const b = document.getElementById("route-copy-link");
     if(b) b.addEventListener("click", ()=>{
       copyToClipboard(location.href);
-      const l = b.querySelector(".label");
-      if(l) l.textContent = t('linkCopied');
+      const l = b.querySelector(".label"); if(l) l.textContent = t('linkCopied');
     });
   }
 
   if(!navigator.geolocation){
     stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-    wireCopyLink();
-    return;
+    wireCopyLink(); return;
   }
 
-  /* --- Jonli kuzatuv: foydalanuvchi harakatlansa, nishoni xaritada
-     real vaqtda siljiydi va xarita uni kuzatib boradi. --- */
-  function startLiveTracking(updateFn){
-    if(liveBadge) liveBadge.style.display = "flex";
-    watchId = navigator.geolocation.watchPosition((p)=>{
-      updateFn(p.coords.latitude, p.coords.longitude);
-    }, ()=>{}, { enableHighAccuracy:true, maximumAge:3000, timeout:15000 });
+  /* ---- Kompas kabi yo'nalish strelkasi ---- */
+  function arrowIcon(color, deg){
+    return L.divIcon({
+      className: "nav-arrow-wrap",
+      html: `<div class="nav-arrow" style="transform:rotate(${deg}deg)">
+        <svg viewBox="0 0 32 32"><path d="M16 2 L28 29 L16 22 L4 29 Z" fill="${color}"
+        stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>`,
+      iconSize: [42,42], iconAnchor: [21,21]
+    });
   }
 
-  /* --- 2-variant (zaxira): OpenStreetMap + OSRM piyoda marshruti.
-     Kalitsiz, bepul, deyarli hamma joyda ishlaydi. --- */
-  async function runLeafletFallback(uLat, uLng){
+  function resetMapLayers(){
+    stopTracking();
+    if(liveBadge) liveBadge.style.display = "none";
+    if(navStatus) navStatus.style.display = "none";
+    statsEl.style.display = "none";
+    routeLine = null; routeLatLngs = null; navMarker = null; lastPos = null;
+    if(lMap){ try{ lMap.remove(); }catch(_){} lMap = null; }
+    if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
+    lMapEl.innerHTML = ""; yMapEl.innerHTML = "";
+  }
+
+  function ensureLeafletMap(){
+    ensureLeafletDefaultIcon();
+    lMapEl.style.display = "block"; yMapEl.style.display = "none";
+    lMap = L.map(lMapEl, { attributionControl:false, zoomControl:true })
+      .setView([coords.lat, coords.lng], 15);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(lMap);
+    L.control.attribution({ prefix:false }).addAttribution("© OpenStreetMap").addTo(lMap);
+    L.marker([coords.lat, coords.lng]).addTo(lMap);
+  }
+
+  /* ---- Avtomobil / piyoda / samokat: OSRM + jonli navigatsiya ---- */
+  async function runOsrm(profileMode, uLat, uLng){
     if(typeof L === "undefined"){
       stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-      wireCopyLink();
-      return;
+      wireCopyLink(); return;
     }
-    ensureLeafletDefaultIcon();
-    // Yandex urinishidan qolgan DOM'ni tozalaymiz — faqat xarita maydonini,
-    // ustidagi yopish tugmasi va belgilarga tegmasdan.
-    document.getElementById("route-map-" + id).innerHTML = "";
+    ensureLeafletMap();
+    const profile = OSRM_PROFILE[profileMode] || "foot";
 
-    leafletMap = L.map("route-map-" + id, { attributionControl:false, zoomControl:true })
-      .setView([coords.lat, coords.lng], 15);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(leafletMap);
-    L.control.attribution({ prefix:false }).addAttribution("\u00a9 OpenStreetMap").addTo(leafletMap);
-    L.marker([coords.lat, coords.lng]).addTo(leafletMap);
-
-    try{
-      const url = `https://router.project-osrm.org/route/v1/foot/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson&steps=true`;
+    async function fetchRoute(pr){
+      const url = `https://router.project-osrm.org/route/v1/${pr}/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson`;
       const res = await request(url, null, { timeout:12000, attempts:2 });
       const data = await res.json();
-      const route = data && data.routes && data.routes[0];
+      return data && data.routes && data.routes[0];
+    }
+
+    try{
+      let route = null;
+      try{ route = await fetchRoute(profile); }catch(_){ route = null; }
+      // Samokat uchun "bike" profili ba'zi serverlarda yo'q — piyodaga qaytamiz.
+      if(!route && profile !== "foot"){ route = await fetchRoute("foot"); }
       if(!route) throw new Error("no route");
 
-      const latlngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      L.polyline(latlngs, { color:"#e8354f", weight:5, opacity:.85 }).addTo(leafletMap);
-      const userMarker = L.circleMarker([uLat, uLng], {
-        radius:9, color:"#fff", weight:3, fillColor:"#3b82f6", fillOpacity:1
-      }).addTo(leafletMap).bindPopup(t('youAreHere'));
-      leafletMap.fitBounds(latlngs, { padding:[30,30] });
+      routeLatLngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
+      routeLine = L.polyline(routeLatLngs, { color:"#2fc98a", weight:6, opacity:.9 }).addTo(lMap);
+      navMarker = L.marker([uLat, uLng], { icon: arrowIcon("#2fc98a", 0) }).addTo(lMap);
+      lMap.fitBounds(routeLatLngs, { padding:[30,30] });
 
       const km = (route.distance/1000).toFixed(1);
       const min = Math.round(route.duration/60);
-      statsEl.textContent = `${km} km \u00b7 ${min} ${t('minutesShort')}`;
+      statsEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
       statsEl.style.display = "block";
 
-      const steps = (route.legs && route.legs[0] && route.legs[0].steps) || [];
-      stepsBox.innerHTML = inAppNoticeHtml()
-        + `<div class="route-fallback-note">\ud83d\udeb6 ${esc(t('pedestrianFallbackNote'))}</div>`
-        + steps.map(s => `
-        <div class="route-step">
-          <span class="route-step-icon">${maneuverIcon(s.maneuver.type, s.maneuver.modifier)}</span>
-          <div>
-            <div class="route-step-text">${esc(stepInstruction(s))}</div>
-            <div class="route-step-dist">${formatStepDistance(s.distance)}</div>
-          </div>
-        </div>`).join("");
+      // Ro'yxat o'rniga qisqa, tushunarli holat paneli
+      stepsBox.innerHTML = inAppNoticeHtml() + `
+        <div class="nav-panel">
+          <div class="nav-panel-row"><span class="nav-panel-k">${esc(t('distanceLabel'))}</span><b>${km} km</b></div>
+          <div class="nav-panel-row"><span class="nav-panel-k">${esc(t('timeLabel'))}</span><b>${min} ${esc(t('minutesShort'))}</b></div>
+          <div class="nav-panel-hint">${esc(t('navHint'))}</div>
+        </div>`;
       wireCopyLink();
 
-      startLiveTracking((nLat, nLng)=>{
-        userMarker.setLatLng([nLat, nLng]);
-        leafletMap.panTo([nLat, nLng], { animate:true });
-      });
+      navStatus.style.display = "block";
+      navStatus.className = "nav-status ok";
+      navStatus.textContent = "🟢 " + t('onRoute');
+
+      liveBadge.style.display = "flex";
+      lastPos = [uLat, uLng];
+      watchId = navigator.geolocation.watchPosition((p)=>{
+        const cur = [p.coords.latitude, p.coords.longitude];
+        let deg = (typeof p.coords.heading === "number" && !isNaN(p.coords.heading))
+          ? p.coords.heading : null;
+        if(deg === null && lastPos && metersBetween(lastPos, cur) > 3){
+          deg = bearingBetween(lastPos, cur);
+        }
+        if(deg === null) deg = 0;
+
+        const off = metersToRoute(cur, routeLatLngs);
+        const onRoute = off <= OFF_ROUTE_METERS;
+        const color = onRoute ? "#2fc98a" : "#e8354f";
+
+        if(navMarker){ navMarker.setLatLng(cur); navMarker.setIcon(arrowIcon(color, deg)); }
+        if(routeLine){ routeLine.setStyle({ color }); }
+        navStatus.className = "nav-status " + (onRoute ? "ok" : "off");
+        navStatus.textContent = onRoute
+          ? "🟢 " + t('onRoute')
+          : "🔴 " + t('offRoute') + " (" + Math.round(off) + " m)";
+        lMap.panTo(cur, { animate:true });
+        if(metersBetween(lastPos, cur) > 2) lastPos = cur;
+      }, ()=>{}, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
     }catch(e){
       stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
       wireCopyLink();
     }
   }
 
-  /* --- 1-variant (asosiy): Yandex — HAQIQIY avtobus/metro/peresadka. --- */
-  function runYandexTransit(uLat, uLng){
+  /* ---- Transport: haqiqiy avtobus / metro / peresadka (Yandex) ---- */
+  function runTransit(uLat, uLng){
+    const ok = (typeof ymaps !== "undefined") && !window.__ymapsFailed;
+    if(!ok){ runOsrm("walk", uLat, uLng); return; }
+
+    lMapEl.style.display = "none"; yMapEl.style.display = "block";
     let settled = false;
     const giveUp = ()=>{
       if(settled) return; settled = true;
       if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
-      runLeafletFallback(uLat, uLng);
+      yMapEl.innerHTML = ""; yMapEl.style.display = "none";
+      runOsrm("walk", uLat, uLng);
     };
-    // Agar Yandex 8 soniyada javob bermasa, zaxira variantga o'tamiz —
-    // shunda foydalanuvchi hech qachon "osilib qolgan" ekranda qolmaydi.
-    const timer = setTimeout(giveUp, 8000);
+    const timer = setTimeout(giveUp, 9000);
 
     try{
       ymaps.ready(function(){
         if(settled) return;
         try{
-          yMap = new ymaps.Map("route-map-" + id, {
-            center: [coords.lat, coords.lng], zoom: 13, controls: ["zoomControl"]
-          });
+          yMap = new ymaps.Map(yMapEl, { center:[coords.lat, coords.lng], zoom:13, controls:["zoomControl"] });
           const mr = new ymaps.multiRouter.MultiRoute({
             referencePoints: [[uLat, uLng], [coords.lat, coords.lng]],
             params: { routingMode: "masstransit" }
@@ -1857,20 +2006,18 @@ function openRouteOverlay(id, coords){
             let html = "";
             try{
               ar.getPaths().each(function(path){
-                path.getSegments().each(function(seg){
-                  const ty = seg.properties.get("type");
-                  const d  = seg.properties.get("distance");
-                  const du = seg.properties.get("duration");
-                  const txt = seg.properties.get("text") || segmentLabel(ty);
+                path.getSegments().each(function(sg){
+                  const ty = sg.properties.get("type");
+                  const d  = sg.properties.get("distance");
+                  const du = sg.properties.get("duration");
+                  const txt = sg.properties.get("text") || segmentLabel(ty);
                   const meta = [];
                   if(d && d.text) meta.push(d.text);
                   if(du && du.text) meta.push(du.text);
                   html += `<div class="route-step">
                     <span class="route-step-icon">${segmentIcon(ty)}</span>
-                    <div>
-                      <div class="route-step-text">${esc(txt)}</div>
-                      ${meta.length ? `<div class="route-step-dist">${esc(meta.join(" \u00b7 "))}</div>` : ""}
-                    </div>
+                    <div><div class="route-step-text">${esc(txt)}</div>
+                    ${meta.length ? `<div class="route-step-dist">${esc(meta.join(" · "))}</div>` : ""}</div>
                   </div>`;
                 });
               });
@@ -1885,31 +2032,40 @@ function openRouteOverlay(id, coords){
             stepsBox.innerHTML = inAppNoticeHtml() + html;
             wireCopyLink();
 
-            // Jonli kuzatuv — Yandex xaritasida ham
             try{
-              const me = new ymaps.Placemark([uLat, uLng], {}, {
-                preset: "islands#blueCircleDotIcon"
-              });
+              const me = new ymaps.Placemark([uLat, uLng], {}, { preset:"islands#blueCircleDotIcon" });
               yMap.geoObjects.add(me);
-              startLiveTracking((nLat, nLng)=>{
-                me.geometry.setCoordinates([nLat, nLng]);
-                yMap.setCenter([nLat, nLng], yMap.getZoom(), { duration:400 });
-              });
+              liveBadge.style.display = "flex";
+              watchId = navigator.geolocation.watchPosition((p)=>{
+                const c = [p.coords.latitude, p.coords.longitude];
+                me.geometry.setCoordinates(c);
+                yMap.setCenter(c, yMap.getZoom(), { duration:400 });
+              }, ()=>{}, { enableHighAccuracy:true, maximumAge:3000, timeout:15000 });
             }catch(_){}
           });
-
           mr.model.events.add("requestfail", function(){ clearTimeout(timer); giveUp(); });
         }catch(_){ clearTimeout(timer); giveUp(); }
       });
     }catch(_){ clearTimeout(timer); giveUp(); }
   }
 
+  function selectMode(newMode, uLat, uLng){
+    mode = newMode;
+    document.querySelectorAll("#route-modes-" + id + " .route-mode-btn").forEach(b=>{
+      b.classList.toggle("selected", b.dataset.mode === newMode);
+    });
+    resetMapLayers();
+    stepsBox.innerHTML = `<div class="route-loading">${esc(t('buildingRoute'))}</div>`;
+    if(newMode === "transit") runTransit(uLat, uLng);
+    else runOsrm(newMode, uLat, uLng);
+  }
+
   navigator.geolocation.getCurrentPosition((pos)=>{
     const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-    stepsBox.innerHTML = `<div class="route-loading">${esc(t('buildingRoute'))}</div>`;
-    const ymapsOk = (typeof ymaps !== "undefined") && !window.__ymapsFailed;
-    if(ymapsOk) runYandexTransit(uLat, uLng);
-    else runLeafletFallback(uLat, uLng);
+    document.querySelectorAll("#route-modes-" + id + " .route-mode-btn").forEach(b=>{
+      b.addEventListener("click", ()=> selectMode(b.dataset.mode, uLat, uLng));
+    });
+    selectMode("transit", uLat, uLng);
   }, ()=>{
     stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
     wireCopyLink();
