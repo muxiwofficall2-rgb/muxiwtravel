@@ -549,7 +549,11 @@
      peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
      uchun eng to'liq jamoat transporti ma'lumotlariga ega xizmat). Bepul
      kalit, kuniga 25 000 so'rovgacha. -->
-<script src="https://api-maps.yandex.ru/2.1/?apikey=94676274-7bca-4386-a02a-461047d08d3d&amp;lang=ru_RU"></script>
+<!-- load=package.full: barcha modullarni (jumladan multiRouter — marshrutlash)
+     boshidanoq bitta so'rovda yuklaydi. Standart holatda multiRouter faqat
+     kerak bo'lganda alohida yuklanadi, va aynan o'sha qo'shimcha yuklash
+     "scriptError" bilan muvaffaqiyatsiz tugayotgan edi. -->
+<script src="https://api-maps.yandex.ru/2.1/?apikey=94676274-7bca-4386-a02a-461047d08d3d&amp;lang=ru_RU&amp;load=package.full"></script>
 
 <script>
 /* =========================================================
