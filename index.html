@@ -395,6 +395,10 @@
   .route-step-text{flex:1;font-size:14px;line-height:1.4;color:var(--text);font-weight:600;}
   .route-step-dist{font-size:12px;color:var(--text-dim);margin-top:2px;}
   .route-loading{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:14px;}
+  .route-debug{
+    margin-top:14px;font-size:11px;font-family:ui-monospace,Consolas,monospace;
+    color:var(--accent-red);word-break:break-word;opacity:.85;
+  }
   .route-fallback-note{
     font-size:12.5px;color:var(--text-dim);text-align:center;
     padding:8px 10px;margin-bottom:6px;border-radius:10px;
@@ -1627,6 +1631,21 @@ function segmentIcon(type){
   if(type === "wait") return "⏳";
   return "•";
 }
+/* Yandex requestfail hodisasidan haqiqiy xato sababini o'qishga urinadi —
+   "topilmadi" bilan "kalitda ruxsat yo'q" kabi holatlarni farqlash uchun. */
+function describeRouteError(e){
+  try{
+    if(e && typeof e.get === "function"){
+      const err = e.get("error");
+      if(err){
+        if(typeof err === "string") return err;
+        if(err.message) return err.message;
+        try{ return JSON.stringify(err); }catch(_){}
+      }
+    }
+  }catch(_){}
+  return "no details";
+}
 function segmentLabel(type){
   if(type === "walk") return t('routeWalk');
   if(type === "transfer") return t('routeTransferAt');
@@ -1707,8 +1726,10 @@ function openRouteOverlay(id, coords){
         stepsBox.insertAdjacentHTML("afterbegin", `<div class="route-fallback-note">🚶 ${esc(t('pedestrianFallbackNote'))}</div>`);
       }
     });
-    pedestrianRoute.model.events.add("requestfail", function(){
-      stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}</div>`;
+    pedestrianRoute.model.events.add("requestfail", function(e){
+      const errText = describeRouteError(e);
+      console.error("[route] pedestrian requestfail:", errText);
+      stepsBox.innerHTML = `<div class="route-loading">${esc(t('noTransitRoute'))}<div class="route-debug">DEBUG: ${esc(errText)}</div></div>`;
     });
   }
 
@@ -1743,7 +1764,9 @@ function openRouteOverlay(id, coords){
         }
       });
 
-      multiRoute.model.events.add("requestfail", function(){
+      multiRoute.model.events.add("requestfail", function(e){
+        const errText = describeRouteError(e);
+        console.error("[route] masstransit requestfail:", errText);
         yMap.geoObjects.remove(multiRoute);
         tryPedestrianFallback(uLat, uLng, stepsBox, statsEl);
       });
