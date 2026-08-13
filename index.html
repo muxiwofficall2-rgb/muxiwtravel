@@ -356,104 +356,28 @@
     min-height:18px;text-align:center;
   }
 
-  /* To'liq ekranli marshrut oynasi */
-  .route-overlay{
-    position:fixed;inset:0;z-index:70;background:var(--bg-1);
-    display:flex;flex-direction:column;animation:storyFadeIn .18s ease;
-  }
-  .route-overlay-map{
-    flex:1 1 52%;min-height:200px;position:relative;
-  }
-  .route-map-canvas{position:absolute;inset:0;}
-  .route-overlay-map .leaflet-container{
-    height:100%;width:100%;font-family:inherit;
-  }
-  .route-close{
-    position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);left:14px;z-index:500;
-    background:rgba(20,20,30,.65);color:#fff;border:none;border-radius:50%;
-    width:38px;height:38px;font-size:16px;cursor:pointer;
-    display:flex;align-items:center;justify-content:center;
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  }
-  .route-stats{
-    position:absolute;top:calc(env(safe-area-inset-top,0px) + 14px);right:14px;z-index:500;
-    background:rgba(20,20,30,.65);color:#fff;border-radius:12px;padding:9px 14px;
-    font-size:13px;font-weight:700;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  }
-  .route-live-badge{
-    position:absolute;bottom:14px;left:50%;transform:translateX(-50%);z-index:500;
-    background:rgba(20,20,30,.7);color:#fff;border-radius:20px;padding:7px 14px;
-    font-size:12.5px;font-weight:700;display:flex;align-items:center;gap:6px;
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-    animation:liveBadgePulse 1.6s ease-in-out infinite;
-  }
-  @keyframes liveBadgePulse{0%,100%{opacity:1;}50%{opacity:.6;}}
-
-  .nav-status{
-    position:absolute;top:calc(env(safe-area-inset-top,0px) + 62px);left:50%;
-    transform:translateX(-50%);z-index:500;white-space:nowrap;
-    color:#fff;border-radius:20px;padding:8px 16px;font-size:13px;font-weight:800;
-    backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
-  }
-  .nav-status.ok{background:rgba(20,120,70,.82);}
-  .nav-status.off{background:rgba(200,30,55,.85);}
-
-  .nav-arrow-wrap{background:none;border:none;}
-  .nav-arrow{width:42px;height:42px;transition:transform .35s ease;}
-  .nav-arrow svg{width:100%;height:100%;display:block;filter:drop-shadow(0 2px 5px rgba(0,0,0,.45));}
-
-  .route-modes{
-    display:flex;gap:8px;padding:10px 14px;background:var(--bg-2);
-    border-top:1px solid var(--glass-border);
-  }
-  .route-mode-btn{
-    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
-    padding:9px 4px;border-radius:14px;cursor:pointer;font-family:inherit;
-    border:1.5px solid var(--glass-border);background:var(--glass);color:var(--text);
-    transition:border-color .15s,background .15s,color .15s;
-  }
-  .route-mode-btn.selected{
-    border-color:var(--accent-red);color:var(--accent-red);background:rgba(232,53,79,.10);
-  }
-  .route-mode-icon{font-size:20px;line-height:1;}
-  .route-mode-label{font-size:11px;font-weight:700;}
-
-  .nav-panel{padding:4px 2px;}
-  .nav-panel-row{
-    display:flex;justify-content:space-between;align-items:center;
-    padding:12px 0;border-bottom:1px solid var(--glass-border);font-size:15px;
-  }
-  .nav-panel-k{color:var(--text-dim);font-weight:600;}
-  .nav-panel-hint{
+  /* Xarita ilovalarini tanlash tugmalari — Yandex / Google / 2GIS */
+  .nav-app-hint{
     margin-top:12px;font-size:12.5px;line-height:1.5;color:var(--text-dim);
+    text-align:center;
+  }
+  .nav-app-grid{
+    display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px;
+  }
+  .nav-app-btn{
+    display:flex;flex-direction:column;align-items:center;gap:8px;
+    padding:14px 6px;border-radius:16px;text-decoration:none;
     background:var(--glass);border:1px solid var(--glass-border);
-    border-radius:12px;padding:10px 12px;
+    transition:transform .12s ease,border-color .15s ease,box-shadow .15s ease;
+    box-shadow:var(--shadow-sm);
   }
-  .route-steps{
-    flex:1 1 48%;overflow-y:auto;background:var(--bg-2);
-    padding:14px 18px calc(env(safe-area-inset-bottom,0px) + 20px);
-    border-top:1px solid var(--glass-border);
+  .nav-app-btn:active{transform:scale(.96);border-color:var(--nav-accent);}
+  .nav-app-icon{
+    width:40px;height:40px;border-radius:50%;overflow:hidden;
+    box-shadow:0 3px 10px rgba(0,0,0,.18);
   }
-  .route-step{
-    display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--glass-border);
-  }
-  .route-step:last-child{border-bottom:none;}
-  .route-step-icon{
-    width:34px;height:34px;border-radius:50%;background:var(--icon-bg);
-    display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;
-  }
-  .route-step-text{flex:1;font-size:14px;line-height:1.4;color:var(--text);font-weight:600;}
-  .route-step-dist{font-size:12px;color:var(--text-dim);margin-top:2px;}
-  .route-loading{padding:40px 20px;text-align:center;color:var(--text-dim);font-size:14px;}
-  .route-debug{
-    margin-top:14px;font-size:11px;font-family:ui-monospace,Consolas,monospace;
-    color:var(--accent-red);word-break:break-word;opacity:.85;
-  }
-  .route-fallback-note{
-    font-size:12.5px;color:var(--text-dim);text-align:center;
-    padding:8px 10px;margin-bottom:6px;border-radius:10px;
-    background:var(--glass);border:1px solid var(--glass-border);
-  }
+  .nav-app-icon svg{width:100%;height:100%;display:block;}
+  .nav-app-label{font-size:12px;font-weight:700;color:var(--text);text-align:center;line-height:1.25;}
 
   .footer-note{font-size:12px;color:var(--text-dim);text-align:center;margin-top:14px;line-height:1.5;}
   .footer-note.err{color:var(--accent-red);font-weight:600;}
@@ -595,13 +519,6 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-<!-- Yandex Maps API — faqat jamoat transporti (avtobus/metro/peresadka)
-     marshrutini olish uchun. Agar u yuklanmasa yoki ishlamasa (masalan ilova
-     ichidagi cheklangan brauzerlarda), sayt avtomatik ravishda bepul
-     OpenStreetMap + OSRM piyoda marshrutiga o'tadi — shuning uchun xarita
-     HAR QANDAY holatda ishlaydi, hech qachon bo'sh ekran chiqmaydi. -->
-<script src="https://api-maps.yandex.ru/2.1/?apikey=94676274-7bca-4386-a02a-461047d08d3d&amp;lang=ru_RU&amp;load=package.full" onerror="window.__ymapsFailed=true"></script>
-
 <!-- Yandex Maps API — faqat "Marshrut" oynasi uchun: haqiqiy avtobus/metro/
      peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
      uchun eng to'liq jamoat transporti ma'lumotlariga ega xizmat). Bepul
@@ -733,7 +650,7 @@ const T = {
     office2:"Dybenko metro bekati, Bolshevikov shoh ko'chasi, 24-uy, 1-bino.",
     map1:"Texnologicheskiy institut metro bekati", map2:"Dybenko metro bekati",
     getDirections:"Yo'l tarifini olish", openInYandex:"Yandex xaritada ochish",
-    showRouteBtn:"Marshrut", locatingYou:"Joylashuvingiz aniqlanmoqda…",
+    showRouteBtn:"Marshrut", navAppHint:"To'liq marshrut (piyoda, avtobus, metro, avtomobil) uchun sevimli xarita ilovangizni tanlang:", locatingYou:"Joylashuvingiz aniqlanmoqda…",
     routeDepart:"Boshlang", routeArrive:"Siz manzilga yetib keldingiz", routeLeft:"chapga buriling",
     routeRight:"o'ngga buriling", routeStraight:"to'g'ri davom eting", routeContinue:"davom eting",
     routeRoundabout:"aylanma yo'ldan o'ting",
@@ -827,7 +744,7 @@ const T = {
     office2:"Станция метро «Дыбенко», проспект Большевиков, дом 24, корпус 1.",
     map1:"Станция метро «Технологический институт»", map2:"Станция метро «Дыбенко»",
     getDirections:"Проложить маршрут", openInYandex:"Открыть в Яндекс Картах",
-    showRouteBtn:"Маршрут", locatingYou:"Определяем ваше местоположение…",
+    showRouteBtn:"Маршрут", navAppHint:"Выберите приложение для полного маршрута (пешком, автобус, метро, авто):", locatingYou:"Определяем ваше местоположение…",
     routeDepart:"Начните движение", routeArrive:"Вы прибыли на место", routeLeft:"поверните налево",
     routeRight:"поверните направо", routeStraight:"продолжайте прямо", routeContinue:"продолжайте движение",
     routeRoundabout:"проедьте через круговое движение",
@@ -921,7 +838,7 @@ const T = {
     office2:"Dybenko metro station, Bolshevikov Avenue, building 24, block 1.",
     map1:"Tekhnologicheskiy Institut metro station", map2:"Dybenko metro station",
     getDirections:"Get directions", openInYandex:"Open in Yandex Maps",
-    showRouteBtn:"Route", locatingYou:"Locating you…",
+    showRouteBtn:"Route", navAppHint:"Choose your preferred maps app for full directions (walking, bus, metro, driving):", locatingYou:"Locating you…",
     routeDepart:"Start", routeArrive:"You have arrived", routeLeft:"turn left",
     routeRight:"turn right", routeStraight:"continue straight", routeContinue:"continue",
     routeRoundabout:"go through the roundabout",
@@ -1662,9 +1579,9 @@ function addressesScreen(){
   </div>`;
 }
 
-/* ================== XARITA (Leaflet — saytning o'zida, hech qanday
-   tashqi ilova ochilmaydi, Yandex/Google/Apple'ga bog'liq emas) ================== */
-const officeMaps = {}; // id -> preview map (faqat nishonni ko'rsatadi)
+/* ================== XARITA (Leaflet — oldindan ko'rish uchun, sayt
+   ichida, hech qanday kalit talab qilmaydi) ================== */
+const officeMaps = {};
 
 function ensureLeafletDefaultIcon(){
   if(typeof L === "undefined" || ensureLeafletDefaultIcon._done) return;
@@ -1676,412 +1593,70 @@ function ensureLeafletDefaultIcon(){
     shadowUrl: "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/images/marker-shadow.png"
   });
 }
-
 function initOfficeMap(id, coords){
   if(typeof L === "undefined") return null;
   ensureLeafletDefaultIcon();
   const el = document.getElementById("map-" + id);
   if(!el || el._leaflet_id) return officeMaps[id] || null;
-
-  const map = L.map(el, { attributionControl: false, zoomControl:false, dragging:false, scrollWheelZoom:false, tap:false })
+  const map = L.map(el, { attributionControl:false, zoomControl:false, dragging:false, scrollWheelZoom:false, tap:false })
     .setView([coords.lat, coords.lng], 15);
   L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-    maxZoom: 19, attribution: "&copy; OpenStreetMap"
+    maxZoom:19, attribution:"&copy; OpenStreetMap"
   }).addTo(map);
-  L.control.attribution({ prefix: false }).addAttribution("© OpenStreetMap").addTo(map);
+  L.control.attribution({ prefix:false }).addAttribution("© OpenStreetMap").addTo(map);
   L.marker([coords.lat, coords.lng]).addTo(map);
-
   officeMaps[id] = map;
   return map;
 }
 
-/* ---- Ko'chama (maneuver) turini o'qish uchun qulay belgi va matn ---- */
-function segmentIcon(type){
-  if(type === "walk") return "🚶";
-  if(type === "transport") return "🚌";
-  if(type === "transfer") return "🔄";
-  if(type === "wait") return "⏳";
-  return "•";
+/* Har bir xarita ilovasi (Yandex/Google/2GIS) o'zining mukammal, tayyor
+   marshrutlash tizimiga ega — piyoda, transport, avtomobil, real vaqtdagi
+   tirbandlik, ovozli navigatsiya — buni qayta qurishga urinish o'rniga,
+   mijozga o'zi tanlagan ilovada ochib berish ancha ishonchli va sifatli. */
+function navAppLinks(coords){
+  const ll = coords.lat + "," + coords.lng;
+  return [
+    { id:"yandex", label:"Yandex Xaritada", accent:"#ffcc00",
+      href:`https://yandex.ru/maps/?rtext=~${ll}&rtt=auto` },
+    { id:"google", label:"Google Xaritada", accent:"#4285f4",
+      href:`https://www.google.com/maps/dir/?api=1&destination=${ll}` },
+    { id:"2gis", label:"2GIS'da", accent:"#12b955",
+      href:`https://2gis.ru/directions/points/%7C${coords.lng},${coords.lat}` }
+  ];
 }
-function segmentLabel(type){
-  if(type === "walk") return t('routeWalk');
-  if(type === "transfer") return t('routeTransferAt');
-  if(type === "wait") return t('routeWait');
-  return t('routeTransport');
+function navAppIcon(id){
+  if(id === "yandex") return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#ffcc00"/><path d="M13.2 6.2h-1.6c-2 0-3.4 1.1-3.4 3 0 1.6.8 2.4 2.1 3.2l-2.4 3.9h1.9l2.1-3.6h1v3.6h1.7V6.2h-1.4zm0 5h-1.2c-1 0-1.6-.5-1.6-1.9 0-1.3.6-1.8 1.6-1.8h1.2v3.7z" fill="#1a1a1a"/></svg>';
+  if(id === "google") return '<svg viewBox="0 0 24 24"><path d="M12 2C7.6 2 4 5.6 4 10c0 5.6 8 12 8 12s8-6.4 8-12c0-4.4-3.6-8-8-8z" fill="#EA4335"/><circle cx="12" cy="10" r="3.4" fill="#fff"/></svg>';
+  return '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="#12b955"/><text x="12" y="16.5" font-size="11" font-weight="800" text-anchor="middle" fill="#fff" font-family="Arial">2</text></svg>';
 }
-function maneuverIcon(type, modifier){
-  if(type === "depart") return "🚩";
-  if(type === "arrive") return "🏁";
-  if(type === "roundabout" || type === "rotary") return "🔄";
-  if(modifier){
-    if(modifier.indexOf("left") !== -1) return "⬅️";
-    if(modifier.indexOf("right") !== -1) return "➡️";
-    if(modifier === "straight") return "⬆️";
-    if(modifier.indexOf("uturn") !== -1) return "↩️";
-  }
-  return "⬆️";
-}
-function stepInstruction(step){
-  const name = step.name || "";
-  const type = step.maneuver.type;
-  const modifier = step.maneuver.modifier;
-  if(type === "depart") return t('routeDepart') + (name ? ` — ${name}` : "");
-  if(type === "arrive") return t('routeArrive');
-  if(type === "roundabout" || type === "rotary") return t('routeRoundabout');
-  let dir = t('routeContinue');
-  if(modifier){
-    if(modifier.indexOf("left") !== -1) dir = t('routeLeft');
-    else if(modifier.indexOf("right") !== -1) dir = t('routeRight');
-    else if(modifier === "straight") dir = t('routeStraight');
-  }
-  return name ? `${dir} — ${name}` : dir;
-}
-function formatStepDistance(m){
-  return m >= 1000 ? (m/1000).toFixed(1) + " km" : Math.round(m) + " m";
-}
-
-/* To'liq ekranli marshrut oynasi — xarita kattalashadi, qadam-baqadam
-   piyoda yo'l ko'rsatmalari (qaysi ko'chadan, qayerga burilish) chiqadi.
-   Bepul, ochiq manbali (OpenStreetMap + OSRM) — hech qanday tashqi
-   kalitga bog'liq emas, shuning uchun barqaror ishlaydi. Yuqori chapdagi
-   ✕ tugmasi bosilganda hammasi o'z holiga qaytadi. */
-/* ================== GEO YORDAMCHILARI ================== */
-function toRad(d){ return d * Math.PI / 180; }
-function metersBetween(a, b){
-  const R = 6371000;
-  const dLat = toRad(b[0]-a[0]), dLng = toRad(b[1]-a[1]);
-  const la1 = toRad(a[0]), la2 = toRad(b[0]);
-  const h = Math.sin(dLat/2)**2 + Math.cos(la1)*Math.cos(la2)*Math.sin(dLng/2)**2;
-  return 2 * R * Math.asin(Math.sqrt(h));
-}
-/* Nuqtadan kesmagacha bo'lgan masofa (metrda) — foydalanuvchi yo'ldan
-   chetga chiqqan-chiqmaganini aniqlash uchun. */
-function metersToSegment(p, v, w){
-  const latRef = toRad((v[0]+w[0])/2);
-  const mPerLat = 111320, mPerLng = 111320 * Math.cos(latRef);
-  const px = (p[1]-v[1])*mPerLng, py = (p[0]-v[0])*mPerLat;
-  const wx = (w[1]-v[1])*mPerLng, wy = (w[0]-v[0])*mPerLat;
-  const len2 = wx*wx + wy*wy;
-  let t = len2 === 0 ? 0 : (px*wx + py*wy) / len2;
-  t = Math.max(0, Math.min(1, t));
-  const dx = px - t*wx, dy = py - t*wy;
-  return Math.sqrt(dx*dx + dy*dy);
-}
-function metersToRoute(p, line){
-  if(!line || line.length < 2) return Infinity;
-  let best = Infinity;
-  for(let i = 0; i < line.length - 1; i++){
-    const d = metersToSegment(p, line[i], line[i+1]);
-    if(d < best) best = d;
-    if(best < 5) break;
-  }
-  return best;
-}
-/* Ikki nuqta orasidagi yo'nalish burchagi (0 = shimol) — strelkani
-   harakat yo'nalishiga qaratish uchun. */
-function bearingBetween(a, b){
-  const la1 = toRad(a[0]), la2 = toRad(b[0]), dLng = toRad(b[1]-a[1]);
-  const y = Math.sin(dLng) * Math.cos(la2);
-  const x = Math.cos(la1)*Math.sin(la2) - Math.sin(la1)*Math.cos(la2)*Math.cos(dLng);
-  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
-}
-
-const ROUTE_MODES = [
-  { id:"transit",  icon:"🚎", key:"modeTransit"  },
-  { id:"car",      icon:"🚗", key:"modeCar"      },
-  { id:"walk",     icon:"🚶", key:"modeWalk"     },
-  { id:"scooter",  icon:"🛴", key:"modeScooter"  }
-];
-const OSRM_PROFILE = { car:"driving", walk:"foot", scooter:"bike" };
-const OFF_ROUTE_METERS = 60;
-
-/* To'liq ekranli navigatsiya oynasi:
-   - Transport rejimi: haqiqiy avtobus/metro/peresadka ro'yxati (Yandex).
-   - Avtomobil/piyoda/samokat: katta xarita + kompas kabi yo'nalish strelkasi.
-     Yo'l ustida bo'lsa YASHIL, chetga chiqsa QIZIL bo'lib ogohlantiradi. */
-function openRouteOverlay(id, coords){
-  const overlay = document.createElement("div");
-  overlay.className = "route-overlay";
-  overlay.innerHTML = `
-    <div class="route-overlay-map">
-      <div class="route-map-canvas" id="rm-leaflet-${id}"></div>
-      <div class="route-map-canvas" id="rm-yandex-${id}" style="display:none"></div>
-      <button type="button" class="route-close" id="route-close-btn" aria-label="close">✕</button>
-      <div class="route-stats" id="route-stats-${id}" style="display:none"></div>
-      <div class="route-live-badge" id="route-live-${id}" style="display:none">🔴 ${esc(t('liveTracking'))}</div>
-      <div class="nav-status" id="nav-status-${id}" style="display:none"></div>
+function officeMapBlock(id, titleKey, textKey, coords){
+  const links = navAppLinks(coords);
+  return `<div class="addr-block">
+    <b>${esc(t(titleKey))}</b><br>${esc(t(textKey))}
+    <div class="office-map" id="map-${id}"></div>
+    <div class="nav-app-hint">${esc(t('navAppHint'))}</div>
+    <div class="nav-app-grid">
+      ${links.map(l => `
+        <a class="nav-app-btn" href="${l.href}" target="_blank" rel="noopener" style="--nav-accent:${l.accent}">
+          <span class="nav-app-icon">${navAppIcon(l.id)}</span>
+          <span class="nav-app-label">${esc(l.label)}</span>
+        </a>`).join("")}
     </div>
-    <div class="route-modes" id="route-modes-${id}">
-      ${ROUTE_MODES.map(m => `
-        <button type="button" class="route-mode-btn" data-mode="${m.id}">
-          <span class="route-mode-icon">${m.icon}</span>
-          <span class="route-mode-label">${esc(t(m.key))}</span>
-        </button>`).join("")}
-    </div>
-    <div class="route-steps" id="route-steps-${id}">
-      <div class="route-loading">${esc(t('locatingYou'))}</div>
-    </div>`;
-  document.body.appendChild(overlay);
-
-  const stepsBox  = document.getElementById("route-steps-" + id);
-  const statsEl   = document.getElementById("route-stats-" + id);
-  const liveBadge = document.getElementById("route-live-" + id);
-  const navStatus = document.getElementById("nav-status-" + id);
-  const lMapEl    = document.getElementById("rm-leaflet-" + id);
-  const yMapEl    = document.getElementById("rm-yandex-" + id);
-
-  let watchId = null, lMap = null, yMap = null;
-  let routeLine = null, routeLatLngs = null, navMarker = null;
-  let lastPos = null, mode = "transit";
-
-  function stopTracking(){
-    if(watchId !== null){ try{ navigator.geolocation.clearWatch(watchId); }catch(_){} watchId = null; }
-  }
-  function cleanup(){
-    stopTracking();
-    if(lMap){ try{ lMap.remove(); }catch(_){} lMap = null; }
-    if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
-  }
-  document.getElementById("route-close-btn").addEventListener("click", ()=>{
-    cleanup(); overlay.remove();
-  });
-
-  function inAppNoticeHtml(){
-    if(!isInAppBrowser()) return "";
-    return `<div class="route-fallback-note">${esc(t('inAppRouteWarning'))}
-      <button type="button" class="glass-btn" id="route-copy-link" style="margin-top:8px">
-        <span class="label">${esc(t('copyLink'))}</span></button></div>`;
-  }
-  function wireCopyLink(){
-    const b = document.getElementById("route-copy-link");
-    if(b) b.addEventListener("click", ()=>{
-      copyToClipboard(location.href);
-      const l = b.querySelector(".label"); if(l) l.textContent = t('linkCopied');
-    });
-  }
-
-  if(!navigator.geolocation){
-    stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-    wireCopyLink(); return;
-  }
-
-  /* ---- Kompas kabi yo'nalish strelkasi ---- */
-  function arrowIcon(color, deg){
-    return L.divIcon({
-      className: "nav-arrow-wrap",
-      html: `<div class="nav-arrow" style="transform:rotate(${deg}deg)">
-        <svg viewBox="0 0 32 32"><path d="M16 2 L28 29 L16 22 L4 29 Z" fill="${color}"
-        stroke="#fff" stroke-width="2" stroke-linejoin="round"/></svg></div>`,
-      iconSize: [42,42], iconAnchor: [21,21]
-    });
-  }
-
-  function resetMapLayers(){
-    stopTracking();
-    if(liveBadge) liveBadge.style.display = "none";
-    if(navStatus) navStatus.style.display = "none";
-    statsEl.style.display = "none";
-    routeLine = null; routeLatLngs = null; navMarker = null; lastPos = null;
-    if(lMap){ try{ lMap.remove(); }catch(_){} lMap = null; }
-    if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
-    lMapEl.innerHTML = ""; yMapEl.innerHTML = "";
-  }
-
-  function ensureLeafletMap(){
-    ensureLeafletDefaultIcon();
-    lMapEl.style.display = "block"; yMapEl.style.display = "none";
-    lMap = L.map(lMapEl, { attributionControl:false, zoomControl:true })
-      .setView([coords.lat, coords.lng], 15);
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", { maxZoom:19 }).addTo(lMap);
-    L.control.attribution({ prefix:false }).addAttribution("© OpenStreetMap").addTo(lMap);
-    L.marker([coords.lat, coords.lng]).addTo(lMap);
-  }
-
-  /* ---- Avtomobil / piyoda / samokat: OSRM + jonli navigatsiya ---- */
-  async function runOsrm(profileMode, uLat, uLng){
-    if(typeof L === "undefined"){
-      stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-      wireCopyLink(); return;
-    }
-    ensureLeafletMap();
-    const profile = OSRM_PROFILE[profileMode] || "foot";
-
-    async function fetchRoute(pr){
-      const url = `https://router.project-osrm.org/route/v1/${pr}/${uLng},${uLat};${coords.lng},${coords.lat}?overview=full&geometries=geojson`;
-      const res = await request(url, null, { timeout:12000, attempts:2 });
-      const data = await res.json();
-      return data && data.routes && data.routes[0];
-    }
-
-    try{
-      let route = null;
-      try{ route = await fetchRoute(profile); }catch(_){ route = null; }
-      // Samokat uchun "bike" profili ba'zi serverlarda yo'q — piyodaga qaytamiz.
-      if(!route && profile !== "foot"){ route = await fetchRoute("foot"); }
-      if(!route) throw new Error("no route");
-
-      routeLatLngs = route.geometry.coordinates.map(c => [c[1], c[0]]);
-      routeLine = L.polyline(routeLatLngs, { color:"#2fc98a", weight:6, opacity:.9 }).addTo(lMap);
-      navMarker = L.marker([uLat, uLng], { icon: arrowIcon("#2fc98a", 0) }).addTo(lMap);
-      lMap.fitBounds(routeLatLngs, { padding:[30,30] });
-
-      const km = (route.distance/1000).toFixed(1);
-      const min = Math.round(route.duration/60);
-      statsEl.textContent = `${km} km · ${min} ${t('minutesShort')}`;
-      statsEl.style.display = "block";
-
-      // Ro'yxat o'rniga qisqa, tushunarli holat paneli
-      stepsBox.innerHTML = inAppNoticeHtml() + `
-        <div class="nav-panel">
-          <div class="nav-panel-row"><span class="nav-panel-k">${esc(t('distanceLabel'))}</span><b>${km} km</b></div>
-          <div class="nav-panel-row"><span class="nav-panel-k">${esc(t('timeLabel'))}</span><b>${min} ${esc(t('minutesShort'))}</b></div>
-          <div class="nav-panel-hint">${esc(t('navHint'))}</div>
-        </div>`;
-      wireCopyLink();
-
-      navStatus.style.display = "block";
-      navStatus.className = "nav-status ok";
-      navStatus.textContent = "🟢 " + t('onRoute');
-
-      liveBadge.style.display = "flex";
-      lastPos = [uLat, uLng];
-      watchId = navigator.geolocation.watchPosition((p)=>{
-        const cur = [p.coords.latitude, p.coords.longitude];
-        let deg = (typeof p.coords.heading === "number" && !isNaN(p.coords.heading))
-          ? p.coords.heading : null;
-        if(deg === null && lastPos && metersBetween(lastPos, cur) > 3){
-          deg = bearingBetween(lastPos, cur);
-        }
-        if(deg === null) deg = 0;
-
-        const off = metersToRoute(cur, routeLatLngs);
-        const onRoute = off <= OFF_ROUTE_METERS;
-        const color = onRoute ? "#2fc98a" : "#e8354f";
-
-        if(navMarker){ navMarker.setLatLng(cur); navMarker.setIcon(arrowIcon(color, deg)); }
-        if(routeLine){ routeLine.setStyle({ color }); }
-        navStatus.className = "nav-status " + (onRoute ? "ok" : "off");
-        navStatus.textContent = onRoute
-          ? "🟢 " + t('onRoute')
-          : "🔴 " + t('offRoute') + " (" + Math.round(off) + " m)";
-        lMap.panTo(cur, { animate:true });
-        if(metersBetween(lastPos, cur) > 2) lastPos = cur;
-      }, ()=>{}, { enableHighAccuracy:true, maximumAge:2000, timeout:15000 });
-    }catch(e){
-      stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-      wireCopyLink();
-    }
-  }
-
-  /* ---- Transport: haqiqiy avtobus / metro / peresadka (Yandex) ---- */
-  function runTransit(uLat, uLng){
-    const ok = (typeof ymaps !== "undefined") && !window.__ymapsFailed;
-    if(!ok){ runOsrm("walk", uLat, uLng); return; }
-
-    lMapEl.style.display = "none"; yMapEl.style.display = "block";
-    let settled = false;
-    const giveUp = ()=>{
-      if(settled) return; settled = true;
-      if(yMap){ try{ yMap.destroy(); }catch(_){} yMap = null; }
-      yMapEl.innerHTML = ""; yMapEl.style.display = "none";
-      runOsrm("walk", uLat, uLng);
-    };
-    const timer = setTimeout(giveUp, 9000);
-
-    try{
-      ymaps.ready(function(){
-        if(settled) return;
-        try{
-          yMap = new ymaps.Map(yMapEl, { center:[coords.lat, coords.lng], zoom:13, controls:["zoomControl"] });
-          const mr = new ymaps.multiRouter.MultiRoute({
-            referencePoints: [[uLat, uLng], [coords.lat, coords.lng]],
-            params: { routingMode: "masstransit" }
-          }, { boundsAutoApply:true });
-          yMap.geoObjects.add(mr);
-
-          mr.model.events.add("requestsuccess", function(){
-            if(settled) return;
-            const ar = mr.getActiveRoute();
-            if(!ar){ clearTimeout(timer); giveUp(); return; }
-            let html = "";
-            try{
-              ar.getPaths().each(function(path){
-                path.getSegments().each(function(sg){
-                  const ty = sg.properties.get("type");
-                  const d  = sg.properties.get("distance");
-                  const du = sg.properties.get("duration");
-                  const txt = sg.properties.get("text") || segmentLabel(ty);
-                  const meta = [];
-                  if(d && d.text) meta.push(d.text);
-                  if(du && du.text) meta.push(du.text);
-                  html += `<div class="route-step">
-                    <span class="route-step-icon">${segmentIcon(ty)}</span>
-                    <div><div class="route-step-text">${esc(txt)}</div>
-                    ${meta.length ? `<div class="route-step-dist">${esc(meta.join(" · "))}</div>` : ""}</div>
-                  </div>`;
-                });
-              });
-            }catch(_){ html = ""; }
-            if(!html){ clearTimeout(timer); giveUp(); return; }
-
-            settled = true; clearTimeout(timer);
-            try{
-              statsEl.textContent = ar.properties.get("duration").text;
-              statsEl.style.display = "block";
-            }catch(_){}
-            stepsBox.innerHTML = inAppNoticeHtml() + html;
-            wireCopyLink();
-
-            try{
-              const me = new ymaps.Placemark([uLat, uLng], {}, { preset:"islands#blueCircleDotIcon" });
-              yMap.geoObjects.add(me);
-              liveBadge.style.display = "flex";
-              watchId = navigator.geolocation.watchPosition((p)=>{
-                const c = [p.coords.latitude, p.coords.longitude];
-                me.geometry.setCoordinates(c);
-                yMap.setCenter(c, yMap.getZoom(), { duration:400 });
-              }, ()=>{}, { enableHighAccuracy:true, maximumAge:3000, timeout:15000 });
-            }catch(_){}
-          });
-          mr.model.events.add("requestfail", function(){ clearTimeout(timer); giveUp(); });
-        }catch(_){ clearTimeout(timer); giveUp(); }
-      });
-    }catch(_){ clearTimeout(timer); giveUp(); }
-  }
-
-  function selectMode(newMode, uLat, uLng){
-    mode = newMode;
-    document.querySelectorAll("#route-modes-" + id + " .route-mode-btn").forEach(b=>{
-      b.classList.toggle("selected", b.dataset.mode === newMode);
-    });
-    resetMapLayers();
-    stepsBox.innerHTML = `<div class="route-loading">${esc(t('buildingRoute'))}</div>`;
-    if(newMode === "transit") runTransit(uLat, uLng);
-    else runOsrm(newMode, uLat, uLng);
-  }
-
-  navigator.geolocation.getCurrentPosition((pos)=>{
-    const uLat = pos.coords.latitude, uLng = pos.coords.longitude;
-    document.querySelectorAll("#route-modes-" + id + " .route-mode-btn").forEach(b=>{
-      b.addEventListener("click", ()=> selectMode(b.dataset.mode, uLat, uLng));
-    });
-    selectMode("transit", uLat, uLng);
-  }, ()=>{
-    stepsBox.innerHTML = inAppNoticeHtml() + `<div class="route-loading">${esc(t('locationError'))}</div>`;
-    wireCopyLink();
-  }, { enableHighAccuracy:true, timeout:10000 });
+  </div>`;
+}
+function addressesScreen(){
+  return `<div class="screen active">${topbar()}
+    <h2 class="title">${esc(t('addrTitle'))}</h2>
+    ${officeMapBlock('office1', 'office1title', 'office1', OFFICE_COORDS.office1)}
+    ${officeMapBlock('office2', 'office2title', 'office2', OFFICE_COORDS.office2)}
+  </div>`;
 }
 
 function bindAddresses(){
   initOfficeMap("office1", OFFICE_COORDS.office1);
   initOfficeMap("office2", OFFICE_COORDS.office2);
-  document.querySelectorAll("[data-route-btn]").forEach(btn=>{
-    btn.addEventListener("click", ()=>{
-      const id = btn.dataset.routeBtn;
-      openRouteOverlay(id, OFFICE_COORDS[id]);
-    });
-  });
 }
+
 
 function helpScreen(){
   return `<div class="screen active">${topbar()}
