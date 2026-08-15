@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#04060b">
 <title>Omad Tour</title>
+
+<!-- PWA — saytni telefon ekraniga "ilova" sifatida o'rnatish uchun -->
+<link rel="manifest" href="/manifest.json">
+<link rel="icon" href="/icon-192.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Omad Tour">
+<meta name="mobile-web-app-capable" content="yes">
+
 <style>
   /* ===================== THEME TOKENS ===================== */
   :root{
@@ -167,6 +177,23 @@
   .hours-badge.closed .hours-dot{background:var(--accent-red);}
   @keyframes hoursDotPulse{0%,100%{opacity:1;}50%{opacity:.4;}}
 
+  .install-banner{
+    display:flex;align-items:center;gap:10px;
+    margin:0 0 16px;padding:11px 12px;border-radius:14px;
+    background:rgba(232,53,79,.09);border:1px solid rgba(232,53,79,.3);
+    animation:fadeUp .4s ease;
+  }
+  .install-banner-icon{font-size:19px;flex-shrink:0;}
+  .install-banner-text{flex:1;font-size:12.5px;line-height:1.4;font-weight:600;color:var(--text);}
+  .install-banner-btn{
+    flex-shrink:0;background:var(--accent-red);color:#fff;border:none;border-radius:10px;
+    padding:8px 12px;font-size:12.5px;font-weight:700;cursor:pointer;font-family:inherit;
+  }
+  .install-banner-close{
+    flex-shrink:0;background:none;border:none;color:var(--text-dim);
+    font-size:15px;cursor:pointer;padding:2px 4px;line-height:1;
+  }
+
   .currency-widget{
     margin:0 0 18px;padding:14px 16px;border-radius:16px;
     background:var(--glass);border:1px solid var(--glass-border);
@@ -174,6 +201,13 @@
     animation:fadeUp .4s ease;
   }
   .cur-title{font-size:12.5px;font-weight:700;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;}
+  .cur-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+  .cur-title-row .cur-title{margin-bottom:0;}
+  .cur-calc-toggle{
+    font-size:11.5px;font-weight:700;color:var(--accent-red);
+    background:rgba(232,53,79,.1);border:1px solid rgba(232,53,79,.3);
+    border-radius:10px;padding:5px 10px;cursor:pointer;font-family:inherit;
+  }
   .cur-list{display:flex;flex-direction:column;gap:7px;}
   .cur-row{display:flex;align-items:center;gap:8px;font-size:15px;}
   .cur-code{font-weight:800;width:44px;flex-shrink:0;color:var(--text);}
@@ -182,6 +216,29 @@
   .cur-trend.up{color:#22c076;}
   .cur-trend.down{color:var(--accent-red);}
   .cur-trend.flat{color:var(--text-dim);}
+  .cur-calc{
+    max-height:0;overflow:hidden;opacity:0;
+    transition:max-height .25s ease,opacity .2s ease,margin .25s ease;
+  }
+  .cur-calc.open{max-height:220px;opacity:1;margin-top:12px;}
+  .cur-calc-row{display:flex;gap:8px;}
+  .cur-calc-input{
+    flex:1;min-width:0;background:var(--surface);border:1px solid var(--glass-border);
+    border-radius:10px;color:var(--text);padding:10px 12px;font-size:15px;font-weight:700;
+    font-family:inherit;
+  }
+  .cur-calc-select{
+    background:var(--surface);border:1px solid var(--glass-border);
+    border-radius:10px;color:var(--text);padding:10px 10px;font-size:13px;font-weight:700;
+    font-family:inherit;
+  }
+  .cur-calc-results{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
+  .cur-calc-result-row{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--surface-hover);border-radius:8px;padding:8px 10px;font-size:13.5px;
+  }
+  .cur-calc-result-code{font-weight:800;color:var(--text-dim);}
+  .cur-calc-result-val{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
   .cur-note{margin-top:10px;font-size:11px;line-height:1.4;color:var(--text-dim);}
   .logo-circle{
     width:132px;height:132px;border-radius:50%;overflow:hidden;
@@ -757,6 +814,9 @@ const T = {
     shareBtn:"Ulashish", shareText:"Omad Tour — aviachiptalar, viza va notarial xizmatlar. Saytga o'ting:",
     openNow:"Hozir ochiq", closedNow:"Hozir yopiq",
     currencyTitle:"Valyuta kurslari (1 USD)", currencyNote:"TMT — Turkmaniston rasmiy (belgilangan) kursi, bozor kursidan farq qilishi mumkin.",
+    currencyCalcBtn:"Kalkulyator",
+    installBtn:"O'rnatish", installTextAndroid:"Saytni ilova sifatida telefon ekraningizga o'rnating — tezroq ochiladi.",
+    installTextIOS:"Ilova sifatida qo'shish: pastdagi ulashish (⬆️) tugmasini bosing, so'ng \"Bosh ekranga qo'shish\"ni tanlang.",
     roundTripQuestion:"Qaytish chiptasini ham xohlaysizmi?",
     oneWayBtn:"Yo'q, faqat borish", roundTripBtn:"Ha, borib-kelish",
     returnDateTitle:"Qaytish sanasini tanlang",
@@ -854,6 +914,9 @@ const T = {
     shareBtn:"Поделиться", shareText:"Omad Tour — авиабилеты, виза и нотариальные услуги. Перейти на сайт:",
     openNow:"Сейчас открыто", closedNow:"Сейчас закрыто",
     currencyTitle:"Курсы валют (1 USD)", currencyNote:"TMT — официальный (фиксированный) курс Туркменистана, может отличаться от рыночного.",
+    currencyCalcBtn:"Калькулятор",
+    installBtn:"Установить", installTextAndroid:"Установите сайт как приложение на экран телефона — будет открываться быстрее.",
+    installTextIOS:"Чтобы добавить как приложение: нажмите кнопку \"Поделиться\" (⬆️) внизу, затем выберите \"На экран «Домой»\".",
     roundTripQuestion:"Хотите также обратный билет?",
     oneWayBtn:"Нет, только в одну сторону", roundTripBtn:"Да, туда и обратно",
     returnDateTitle:"Выберите дату обратного рейса",
@@ -951,6 +1014,9 @@ const T = {
     shareBtn:"Share", shareText:"Omad Tour — flight tickets, visa and notary services. Visit the site:",
     openNow:"Open now", closedNow:"Closed now",
     currencyTitle:"Exchange rates (1 USD)", currencyNote:"TMT is Turkmenistan's official fixed rate and may differ from the market rate.",
+    currencyCalcBtn:"Calculator",
+    installBtn:"Install", installTextAndroid:"Install this site as an app on your home screen for faster access.",
+    installTextIOS:"To add as an app: tap the Share button (⬆️) below, then choose \"Add to Home Screen\".",
     roundTripQuestion:"Would you also like a return ticket?",
     oneWayBtn:"No, one way only", roundTripBtn:"Yes, round trip",
     returnDateTitle:"Select the return date",
@@ -1057,6 +1123,55 @@ function isInAppBrowser(){
   return /FBAN|FBAV|Instagram|Line\/|MicroMessenger|imo\b|IMO\b|WhatsApp|Snapchat|TikTok|musical_ly/i.test(ua);
 }
 
+/* ---- Saytni "ilova" sifatida telefon ekraniga o'rnatish ----
+   Android/Chrome: brauzerning o'z "beforeinstallprompt" hodisasi orqali —
+   haqiqiy, tizim darajasidagi o'rnatish oynasi chiqadi.
+   iOS/Safari: dasturiy o'rnatish imkoni umuman yo'q (Apple cheklaydi),
+   shuning uchun aniq, qadam-baqadam qo'lda qilish yo'riqnomasi ko'rsatiladi. */
+window.__deferredInstallPrompt = null;
+window.addEventListener("beforeinstallprompt", (e)=>{
+  e.preventDefault();
+  window.__deferredInstallPrompt = e;
+  updateInstallBanner();
+});
+window.addEventListener("appinstalled", ()=>{
+  window.__deferredInstallPrompt = null;
+  store.set("omad_install_dismissed", "1");
+  updateInstallBanner();
+});
+function isIOSDevice(){
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+}
+function isStandaloneApp(){
+  return window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+}
+function updateInstallBanner(){
+  const banner = document.getElementById("installBanner");
+  if(!banner) return;
+  const textEl = document.getElementById("installBannerText");
+  const btnEl = document.getElementById("installBannerBtn");
+  if(isStandaloneApp() || store.get("omad_install_dismissed","") === "1"){
+    banner.style.display = "none";
+    return;
+  }
+  if(window.__deferredInstallPrompt){
+    banner.style.display = "flex";
+    textEl.textContent = t('installTextAndroid');
+    btnEl.style.display = "inline-flex";
+  }else if(isIOSDevice()){
+    banner.style.display = "flex";
+    textEl.textContent = t('installTextIOS');
+    btnEl.style.display = "none";
+  }else{
+    banner.style.display = "none";
+  }
+}
+if("serviceWorker" in navigator){
+  window.addEventListener("load", ()=>{
+    navigator.serviceWorker.register("/sw.js").catch(()=>{});
+  });
+}
+
 /* Havolani ISTALGAN ilova orqali ulashish — qurilmaning o'z tizim
    menyusini ochadi (Telegram, WhatsApp, Max, Instagram va h.k. —
    telefonda o'rnatilgan barcha ilovalar ro'yxati chiqadi). Android'da ham,
@@ -1103,6 +1218,7 @@ function renderHoursBadge(){
    "real vaqt" tuyg'usini beradi. O'zgarish yo'nalishi (▲/▼) — oldingi
    tekshiruvga nisbatan solishtirib ko'rsatiladi. */
 const CURRENCY_CODES = ["RUB","UZS","TMT"];
+let lastCurrencyRates = null; // kalkulyator shundan foydalanadi
 async function fetchCurrencyRates(){
   try{
     const res = await request("https://open.er-api.com/v6/latest/USD", null, { timeout:10000, attempts:2 });
@@ -1133,10 +1249,32 @@ function renderCurrencyWidget(rates, prevRates){
   }).join("");
   if(!rows){ el.style.display = "none"; return; }
   el.style.display = "block";
+  lastCurrencyRates = rates;
+  const calcWasOpen = el.querySelector(".cur-calc.open") != null;
+  const prevAmount = el.querySelector("#curCalcInput")?.value || "";
+  const prevFrom = el.querySelector("#curCalcFrom")?.value || "USD";
   el.innerHTML = `
-    <div class="cur-title">${esc(t('currencyTitle'))}</div>
+    <div class="cur-title-row">
+      <div class="cur-title">${esc(t('currencyTitle'))}</div>
+      <button type="button" class="cur-calc-toggle" id="curCalcToggle">${esc(t('currencyCalcBtn'))}</button>
+    </div>
     <div class="cur-list">${rows}</div>
+    <div class="cur-calc${calcWasOpen ? " open" : ""}" id="curCalc">
+      <div class="cur-calc-row">
+        <input type="text" inputmode="decimal" id="curCalcInput" class="cur-calc-input" placeholder="0" value="${esc(prevAmount)}">
+        <select id="curCalcFrom" class="cur-calc-select">
+          <option value="USD">USD</option>
+          <option value="RUB">RUB</option>
+          <option value="UZS">UZS</option>
+          <option value="TMT">TMT</option>
+        </select>
+      </div>
+      <div class="cur-calc-results" id="curCalcResults"></div>
+    </div>
     <div class="cur-note">${esc(t('currencyNote'))}</div>`;
+  const fromSel = el.querySelector("#curCalcFrom");
+  if(fromSel) fromSel.value = prevFrom;
+  bindCurrencyCalculator();
 }
 async function updateCurrencyWidget(){
   const rates = await fetchCurrencyRates();
@@ -1144,6 +1282,56 @@ async function updateCurrencyWidget(){
   const prev = store.getJSON("omad_currency_rates", null);
   renderCurrencyWidget(rates, prev);
   store.setJSON("omad_currency_rates", rates);
+}
+
+/* Valyuta kalkulyatori — mijoz istalgan summani (USD/RUB/UZS/TMT) kiritsa,
+   qolgan uch valyutada avtomatik hisoblab ko'rsatadi. Allaqachon
+   yuklab olingan kurslardan foydalanadi, qo'shimcha so'rov ketmaydi. */
+const ALL_CUR_CODES = ["USD","RUB","UZS","TMT"];
+function convertFromRates(amount, fromCode, rates){
+  if(!rates || isNaN(amount)) return null;
+  const rateOf = (code)=> code === "USD" ? 1 : rates[code];
+  const fromRate = rateOf(fromCode);
+  if(!fromRate) return null;
+  const usdAmount = amount / fromRate;
+  const out = {};
+  ALL_CUR_CODES.forEach(code=>{ out[code] = usdAmount * rateOf(code); });
+  return out;
+}
+function bindCurrencyCalculator(){
+  const toggle = document.getElementById("curCalcToggle");
+  const calc = document.getElementById("curCalc");
+  const input = document.getElementById("curCalcInput");
+  const fromSel = document.getElementById("curCalcFrom");
+  const resultsEl = document.getElementById("curCalcResults");
+  if(!toggle || !calc || !input || !fromSel || !resultsEl) return;
+
+  toggle.addEventListener("click", ()=>{
+    calc.classList.toggle("open");
+    if(calc.classList.contains("open")) input.focus();
+  });
+
+  function recompute(){
+    const amount = parseFloat((input.value || "").replace(/\s/g,"").replace(",", "."));
+    const fromCode = fromSel.value;
+    if(!amount || isNaN(amount) || !lastCurrencyRates){
+      resultsEl.innerHTML = "";
+      return;
+    }
+    const out = convertFromRates(amount, fromCode, lastCurrencyRates);
+    if(!out){ resultsEl.innerHTML = ""; return; }
+    resultsEl.innerHTML = ALL_CUR_CODES.filter(c => c !== fromCode).map(code=>{
+      const v = out[code];
+      const decimals = v >= 100 ? 0 : 2;
+      return `<div class="cur-calc-result-row">
+        <span class="cur-calc-result-code">${code}</span>
+        <span class="cur-calc-result-val">${v.toLocaleString(undefined,{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}</span>
+      </div>`;
+    }).join("");
+  }
+  input.addEventListener("input", recompute);
+  fromSel.addEventListener("change", recompute);
+  recompute();
 }
 
 function formatSize(b){
@@ -1433,6 +1621,12 @@ function homeScreen(){
     </div>
     <div class="home-scroll">
       <div class="hours-badge" id="hoursBadge"></div>
+      <div class="install-banner" id="installBanner" style="display:none">
+        <span class="install-banner-icon">📲</span>
+        <div class="install-banner-text" id="installBannerText"></div>
+        <button type="button" class="install-banner-btn" id="installBannerBtn" style="display:none">${esc(t('installBtn'))}</button>
+        <button type="button" class="install-banner-close" id="installBannerClose" aria-label="close">✕</button>
+      </div>
       <div class="logo-wrap">
         <div class="logo-circle" id="logoTap">
           <img src="${LOGO_SRC}" alt="Omad Tour" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-weight:800;font-size:13px;color:#0c1c4d;text-align:center&quot;>OMAD<br>TOUR</span>'">
@@ -1942,6 +2136,20 @@ function bindHome(){
     const l = document.querySelector("#copyLinkBtn .label");
     if(l) l.textContent = t('linkCopied');
   });
+  document.getElementById("installBannerClose")?.addEventListener("click", ()=>{
+    store.set("omad_install_dismissed", "1");
+    const b = document.getElementById("installBanner");
+    if(b) b.style.display = "none";
+  });
+  document.getElementById("installBannerBtn")?.addEventListener("click", async ()=>{
+    const evt = window.__deferredInstallPrompt;
+    if(!evt) return;
+    evt.prompt();
+    try{ await evt.userChoice; }catch(e){}
+    window.__deferredInstallPrompt = null;
+    updateInstallBanner();
+  });
+  updateInstallBanner();
   document.getElementById("logoTap")?.addEventListener("click", ()=>{
     logoTaps++;
     clearTimeout(logoTimer);
