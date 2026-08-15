@@ -1,0 +1,16 @@
+{
+  "name": "Omad Tour",
+  "short_name": "Omad Tour",
+  "description": "Aviachiptalar, viza tekshiruvi va notarial xizmatlar",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef2fb",
+  "theme_color": "#e8354f",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512-maskable.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
