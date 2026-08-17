@@ -194,6 +194,16 @@
     font-size:15px;cursor:pointer;padding:2px 4px;line-height:1;
   }
 
+  .client-counter{
+    display:flex;flex-direction:column;align-items:center;gap:2px;
+    margin:0 0 18px;text-align:center;animation:fadeUp .45s ease;
+  }
+  .client-counter-num{
+    font-size:34px;font-weight:800;color:var(--accent-red);
+    line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
+  }
+  .client-counter-label{font-size:12.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
+
   .currency-widget{
     margin:0 0 18px;padding:14px 16px;border-radius:16px;
     background:var(--glass);border:1px solid var(--glass-border);
@@ -817,6 +827,7 @@ const T = {
     currencyCalcBtn:"Kalkulyator",
     installBtn:"O'rnatish", installTextAndroid:"Saytni ilova sifatida telefon ekraningizga o'rnating — tezroq ochiladi.",
     installTextIOS:"Ilova sifatida qo'shish: pastdagi ulashish (⬆️) tugmasini bosing, so'ng \"Bosh ekranga qo'shish\"ni tanlang.",
+    clientCounterLabel:"mijozga xizmat ko'rsatdik",
     roundTripQuestion:"Qaytish chiptasini ham xohlaysizmi?",
     oneWayBtn:"Yo'q, faqat borish", roundTripBtn:"Ha, borib-kelish",
     returnDateTitle:"Qaytish sanasini tanlang",
@@ -917,6 +928,7 @@ const T = {
     currencyCalcBtn:"Калькулятор",
     installBtn:"Установить", installTextAndroid:"Установите сайт как приложение на экран телефона — будет открываться быстрее.",
     installTextIOS:"Чтобы добавить как приложение: нажмите кнопку \"Поделиться\" (⬆️) внизу, затем выберите \"На экран «Домой»\".",
+    clientCounterLabel:"клиентам оказали услуги",
     roundTripQuestion:"Хотите также обратный билет?",
     oneWayBtn:"Нет, только в одну сторону", roundTripBtn:"Да, туда и обратно",
     returnDateTitle:"Выберите дату обратного рейса",
@@ -1017,6 +1029,7 @@ const T = {
     currencyCalcBtn:"Calculator",
     installBtn:"Install", installTextAndroid:"Install this site as an app on your home screen for faster access.",
     installTextIOS:"To add as an app: tap the Share button (⬆️) below, then choose \"Add to Home Screen\".",
+    clientCounterLabel:"clients served",
     roundTripQuestion:"Would you also like a return ticket?",
     oneWayBtn:"No, one way only", roundTripBtn:"Yes, round trip",
     returnDateTitle:"Select the return date",
@@ -1209,6 +1222,42 @@ function renderHoursBadge(){
   const open = isOfficeOpenNow();
   el.className = "hours-badge " + (open ? "open" : "closed");
   el.innerHTML = `<span class="hours-dot"></span>${open ? esc(t('openNow')) : esc(t('closedNow'))} · 09:00–19:00`;
+}
+
+/* ---- "Bizning muvaffaqiyatimiz" — jonli, HAQIQIY mijozlar hisoblagichi.
+   Bu raqam o'ylab topilmaydi: admin panelda bir marta boshlang'ich son
+   (masalan hozirgi +1000) kiritiladi, shundan keyin son har doim
+   AVTOMATIK — bazadagi haqiqiy so'rovlar soniga (hozircha viza so'rovlari,
+   keyinchalik chipta so'rovlari ham qo'shiladi) qarab o'sib boradi. */
+async function fetchClientCounterBase(){
+  const v = await kvGet("client_counter_base", 0);
+  const n = parseInt(v, 10);
+  return isNaN(n) ? 0 : n;
+}
+function animateCounterTo(el, target){
+  const start = 0;
+  const duration = 900;
+  const startTime = performance.now();
+  function step(now){
+    const p = Math.min(1, (now - startTime) / duration);
+    const eased = 1 - Math.pow(1 - p, 3);
+    el.textContent = Math.round(start + (target - start) * eased).toLocaleString();
+    if(p < 1) requestAnimationFrame(step);
+    else el.textContent = target.toLocaleString();
+  }
+  requestAnimationFrame(step);
+}
+async function updateClientCounter(){
+  const wrap = document.getElementById("clientCounter");
+  const numEl = document.getElementById("clientCounterNum");
+  if(!wrap || !numEl) return;
+  try{
+    const [base, visaList] = await Promise.all([fetchClientCounterBase(), fetchVisa()]);
+    const total = base + visaList.length;
+    if(total <= 0){ wrap.style.display = "none"; return; }
+    wrap.style.display = "flex";
+    animateCounterTo(numEl, total);
+  }catch(e){ /* jim o'tkazamiz — hisoblagich shunchaki ko'rinmay qoladi */ }
 }
 
 /* ---- Valyuta kurslari — 1 USD ga nisbatan, jonli va bepul (kalitsiz)
@@ -1631,6 +1680,10 @@ function homeScreen(){
         <div class="logo-circle" id="logoTap">
           <img src="${LOGO_SRC}" alt="Omad Tour" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-weight:800;font-size:13px;color:#0c1c4d;text-align:center&quot;>OMAD<br>TOUR</span>'">
         </div>
+      </div>
+      <div class="client-counter" id="clientCounter" style="display:none">
+        <span class="client-counter-num" id="clientCounterNum">0</span>
+        <span class="client-counter-label">${esc(t('clientCounterLabel'))}</span>
       </div>
       ${isInAppBrowser() ? `<div class="inapp-warning">
         <span>${esc(t('inAppWarning'))}</span>
@@ -2069,6 +2122,17 @@ function adminScreen(){
     <h2 class="title">Admin panel</h2>
     <div class="section-text">Ulashilgan xotira faol. Bu yerda qo'shilgan yangiliklar barcha qurilmalarda ko'rinadi.</div>
 
+    <h2 class="title" style="margin-top:6px">📊 Mijozlar hisoblagichi</h2>
+    <div class="section-text">
+      Bosh sahifada ko'rinadigan "N+ mijozga xizmat ko'rsatdik" raqami.
+      Bu yerga hozirgi haqiqiy sonni (masalan 1000) bir marta kiriting —
+      shundan keyin sayt buni o'zi, saytdagi haqiqiy so'rovlar soniga
+      qarab avtomatik oshirib boradi (o'zingiz qayta kiritishga hojat yo'q).
+    </div>
+    <input type="text" inputmode="numeric" id="counterBaseInput" placeholder="Masalan: 1000">
+    <button class="primary-btn" id="counterBaseSave">Saqlash</button>
+    <div class="footer-note" id="counterBaseStatus" style="min-height:18px"></div>
+
     <h2 class="title" style="margin-top:6px"><span class="inline-icon">${ICONS.megaphone}</span> Yangiliklar</h2>
     <textarea id="newsInput" placeholder="Yangi xabar matni..."></textarea>
     <div class="field-label">Rasm (ixtiyoriy)</div>
@@ -2167,6 +2231,8 @@ function bindHome(){
   renderHoursBadge();
   clearInterval(window.__hoursInterval);
   window.__hoursInterval = setInterval(renderHoursBadge, 60000);
+
+  updateClientCounter();
 
   Promise.all([fetchNews(), fetchVisa()]).then(([news, visa])=>{
     store.set("omad_news_count", String(news.length));
@@ -2535,6 +2601,28 @@ function showStory(item){
 
 function bindAdmin(){
   const up = wireDropzone("news");
+
+  // Mijozlar hisoblagichi — joriy saqlangan qiymatni ko'rsatamiz va
+  // yangi qiymat kiritilganda saqlaymiz.
+  fetchClientCounterBase().then(v=>{
+    const inp = document.getElementById("counterBaseInput");
+    if(inp && v) inp.value = v;
+  });
+  document.getElementById("counterBaseSave")?.addEventListener("click", async ()=>{
+    const inp = document.getElementById("counterBaseInput");
+    const status = document.getElementById("counterBaseStatus");
+    const n = parseInt((inp.value || "").replace(/\D/g,""), 10);
+    if(isNaN(n) || n < 0){
+      status.className = "footer-note err";
+      status.textContent = "Iltimos, to'g'ri son kiriting.";
+      return;
+    }
+    status.className = "footer-note";
+    status.textContent = "Saqlanmoqda…";
+    const r = await kvSet("client_counter_base", n);
+    status.className = "footer-note " + (r.ok ? "ok" : "err");
+    status.textContent = r.ok ? "Saqlandi ✓" : "Xatolik: " + r.detail;
+  });
 
   function renderList(){
     fetchNews().then(list=>{
