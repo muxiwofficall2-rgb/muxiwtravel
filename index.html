@@ -388,6 +388,13 @@
     display:block;font-size:11px;color:var(--text-dim);margin-top:2px;
     line-height:1.4;word-break:break-word;font-family:ui-monospace,Consolas,monospace;
   }
+  .ocr-status{
+    font-size:12.5px;font-weight:600;padding:9px 12px;border-radius:10px;margin:8px 0 4px;
+    background:var(--glass);border:1px solid var(--glass-border);
+  }
+  .ocr-status.working{color:var(--text-dim);}
+  .ocr-status.ok{color:#1c9a5b;background:rgba(34,192,118,.1);border-color:rgba(34,192,118,.3);}
+  .ocr-status.empty{color:var(--text-dim);}
   .upload-remove{
     background:var(--accent-red);color:#fff;border:none;border-radius:50%;
     width:26px;height:26px;font-size:13px;cursor:pointer;flex-shrink:0;line-height:1;
@@ -640,6 +647,13 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
+<!-- Tesseract.js — viza blankasidagi ariza raqami va pasport raqamini
+     mijozning telefonida, TO'LIQ BEPUL o'qib olish uchun. Bu — davlat
+     saytiga (visa.mfa.uz) hech qanday aloqasi yo'q, faqat mijoz yuborgan
+     rasmning o'zini "o'qiydi", shunda admin raqamlarni suratdan qo'lda
+     o'qib, qayta yozishga vaqt sarflamaydi. -->
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
 <!-- Yandex Maps API — faqat "Marshrut" oynasi uchun: haqiqiy avtobus/metro/
      peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
      uchun eng to'liq jamoat transporti ma'lumotlariga ega xizmat). Bepul
@@ -811,6 +825,10 @@ const T = {
     submitSuccess:"So'rovingiz qabul qilindi. Tez orada siz bilan bog'lanamiz.",
     submitFail:"Yuborilmadi. Internetni tekshiring va “Yuborish”ni qayta bosing.",
     phoneInvalid:"Telefon raqamini to'liq kiriting",
+    barcodeLabel:"Ariza raqami (barkod)", barcodePh:"Avtomatik aniqlanadi yoki qo'lda yozing",
+    passportLabel:"Pasport raqami", passportPh:"Masalan: AB1234567",
+    ocrWorking:"📷 Rasmdan raqamlar aniqlanmoqda…", ocrFound:"✓ Raqamlar avtomatik topildi — tekshirib ko'ring",
+    ocrNotFound:"Raqamlar avtomatik topilmadi — pastiga qo'lda yozing (ixtiyoriy)",
     myVisaStatus:"So'rovim holati",
     statusNewTitle:"Ko'rib chiqilmoqda",
     statusNewText:"So'rovingiz mutaxassisimizga yuborildi. Iltimos, javobni kuting.",
@@ -912,6 +930,10 @@ const T = {
     submitSuccess:"Ваша заявка принята. Мы свяжемся с вами в ближайшее время.",
     submitFail:"Не отправлено. Проверьте интернет и нажмите «Отправить» ещё раз.",
     phoneInvalid:"Введите номер телефона полностью",
+    barcodeLabel:"Номер заявки (баркод)", barcodePh:"Определится автоматически или введите вручную",
+    passportLabel:"Номер паспорта", passportPh:"Например: AB1234567",
+    ocrWorking:"📷 Распознаём цифры с фото…", ocrFound:"✓ Цифры найдены автоматически — проверьте",
+    ocrNotFound:"Не удалось распознать автоматически — введите ниже вручную (необязательно)",
     myVisaStatus:"Статус моей заявки",
     statusNewTitle:"На рассмотрении",
     statusNewText:"Ваша заявка отправлена нашему специалисту. Пожалуйста, дождитесь ответа.",
@@ -1013,6 +1035,10 @@ const T = {
     submitSuccess:"Your request has been received. We will contact you shortly.",
     submitFail:"Not sent. Check your connection and press Send again.",
     phoneInvalid:"Enter the full phone number",
+    barcodeLabel:"Application number (barcode)", barcodePh:"Detected automatically or type manually",
+    passportLabel:"Passport number", passportPh:"e.g. AB1234567",
+    ocrWorking:"📷 Reading numbers from photo…", ocrFound:"✓ Numbers found automatically — please check",
+    ocrNotFound:"Could not auto-detect — type below manually (optional)",
     myVisaStatus:"My request status",
     statusNewTitle:"Under review",
     statusNewText:"Your request was sent to our specialist. Please wait for the answer.",
@@ -1458,11 +1484,14 @@ async function kvSet(key, value){
    yetib boradi. Server o'zi ham 2 marta qayta uradi va agar baribir
    ishlamasa, kamida matnli ogohlantirish xabarini yuboradi, shuning
    uchun so'rov hech qachon "izsiz" yo'qolmaydi. */
-async function notifyTelegramVisa(base64, phone, submissionId){
+async function notifyTelegramVisa(base64, phone, submissionId, extra){
   try{
     const res = await request("/api/notify-telegram", {
       method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ imageBase64: base64, phone, submissionId })
+      body: JSON.stringify({
+        imageBase64: base64, phone, submissionId,
+        barcode: extra && extra.barcode, passport: extra && extra.passport
+      })
     }, { timeout:20000, attempts:1 });
     const data = await res.json().catch(()=> null);
     return !!(data && data.ok);
@@ -1582,10 +1611,13 @@ function newsSeen(){ return parseInt(store.get("omad_news_seen","0"), 10) || 0; 
 function setNewsSeen(n){ store.set("omad_news_seen", String(n)); }
 
 async function fetchVisa(){ return await kvGet("visa_submissions", []); }
-async function addVisa(phone, imageUrl, id){
+async function addVisa(phone, imageUrl, id, extra){
   id = id || Date.now();
   const list = (await fetchVisa()).slice();
-  list.unshift({ id, phone, imageUrl, date: new Date().toLocaleString("ru-RU"), status:"new" });
+  list.unshift({
+    id, phone, imageUrl, date: new Date().toLocaleString("ru-RU"), status:"new",
+    barcode: (extra && extra.barcode) || "", passport: (extra && extra.passport) || ""
+  });
   const r = await kvSet("visa_submissions", list.slice(0, MAX_VISA_ITEMS));
   return { id, saved: r.ok, detail: r.detail };
 }
@@ -1934,6 +1966,11 @@ function vizaFormScreen(){
     <div class="field-label" style="margin-top:0">${esc(t('uploadPhoto'))}<span class="required-star">*</span></div>
     ${dropzone('viza', t('uploadPhoto'))}
     <div class="error-msg" id="vizaFileErr">${esc(t('required'))}</div>
+    <div class="ocr-status" id="ocrStatus" style="display:none"></div>
+    <div class="field-label">${esc(t('barcodeLabel'))}</div>
+    <input type="text" inputmode="numeric" id="vizaBarcode" placeholder="${esc(t('barcodePh'))}">
+    <div class="field-label">${esc(t('passportLabel'))}</div>
+    <input type="text" id="vizaPassport" placeholder="${esc(t('passportPh'))}" style="text-transform:uppercase">
     <div class="field-label">${esc(t('yourPhone'))}<span class="required-star">*</span></div>
     <input type="tel" inputmode="tel" id="vizaPhone" placeholder="+7 900 123-45-67">
     <div class="error-msg" id="vizaPhoneErr">${esc(t('phoneInvalid'))}</div>
@@ -2382,8 +2419,9 @@ function bindViza(){
   });
 }
 
-/* Fayl tanlash + fon rejimida yuklash */
-function wireDropzone(prefix){
+/* Fayl tanlash + fon rejimida yuklash. `onFileSelected` — ixtiyoriy,
+   fayl tanlangan zahoti qo'shimcha ish qilish uchun (masalan OCR). */
+function wireDropzone(prefix, onFileSelected){
   const input = document.getElementById(prefix + "File");
   const box = document.getElementById(prefix + "Box");
   const empty = document.getElementById(prefix + "Empty");
@@ -2438,6 +2476,7 @@ function wireDropzone(prefix){
     if(!f) return;
     show(f);
     uploader.setFile(f);
+    if(typeof onFileSelected === "function") onFileSelected(f);
   });
   remove.addEventListener("click", e=>{
     e.stopPropagation();
@@ -2451,8 +2490,60 @@ function wireDropzone(prefix){
   return uploader;
 }
 
+/* ================== OCR — blankadagi ariza raqami (barkod) va pasport
+   raqamini mijozning telefonida, bepul o'qib olish (Tesseract.js).
+   Bu hech qanday serverga yoki davlat saytiga ulanmaydi — faqat mijoz
+   o'zi yuborgan rasmni "o'qiydi", shu bilan admin raqamlarni suratdan
+   qo'lda o'qib yozishga vaqt sarflamaydi. ================== */
+let ocrWorkerPromise = null;
+function getOcrWorker(){
+  if(!ocrWorkerPromise){
+    if(typeof Tesseract === "undefined") return Promise.reject(new Error("no tesseract"));
+    ocrWorkerPromise = Tesseract.createWorker("eng");
+  }
+  return ocrWorkerPromise;
+}
+function extractVisaFields(rawText){
+  const text = (rawText || "").toUpperCase();
+  // Ariza raqami (barkod) — odatda uzun, faqat raqamlardan iborat (10-16 xona)
+  const barcodeMatch = text.match(/\b\d{10,16}\b/);
+  // Pasport raqami — O'zbekiston pasporti: 2 ta lotin harfi + 7 ta raqam (masalan AB1234567)
+  const passportMatch = text.match(/\b[A-Z]{2}\s?-?\s?\d{7}\b/);
+  return {
+    barcode: barcodeMatch ? barcodeMatch[0] : "",
+    passport: passportMatch ? passportMatch[0].replace(/[\s-]/g,"") : ""
+  };
+}
+async function runVizaOcr(file){
+  const statusEl = document.getElementById("ocrStatus");
+  const barcodeInput = document.getElementById("vizaBarcode");
+  const passportInput = document.getElementById("vizaPassport");
+  if(!statusEl || !barcodeInput || !passportInput) return;
+  if(typeof Tesseract === "undefined"){
+    // Tesseract yuklanmagan (masalan tarmoq bloklagan) — jim o'tamiz,
+    // mijoz maydonlarni qo'lda to'ldirishi ham mumkin.
+    return;
+  }
+  statusEl.style.display = "block";
+  statusEl.className = "ocr-status working";
+  statusEl.textContent = t('ocrWorking');
+  try{
+    const worker = await getOcrWorker();
+    const { data } = await worker.recognize(file);
+    const fields = extractVisaFields(data.text);
+    let foundAny = false;
+    if(fields.barcode && !barcodeInput.value){ barcodeInput.value = fields.barcode; foundAny = true; }
+    if(fields.passport && !passportInput.value){ passportInput.value = fields.passport; foundAny = true; }
+    statusEl.className = "ocr-status " + (foundAny ? "ok" : "empty");
+    statusEl.textContent = foundAny ? t('ocrFound') : t('ocrNotFound');
+  }catch(e){
+    statusEl.className = "ocr-status empty";
+    statusEl.textContent = t('ocrNotFound');
+  }
+}
+
 function bindVizaForm(){
-  const up = wireDropzone("viza");
+  const up = wireDropzone("viza", (file)=> runVizaOcr(file));
   const phone = document.getElementById("vizaPhone");
   phone.value = "+7 ";
   phone.addEventListener("input", ()=>{ phone.value = formatRuPhone(phone.value); });
@@ -2485,13 +2576,17 @@ function bindVizaForm(){
       const url = await up.resolve();
       const phoneVal = phone.value.trim();
       const id = Date.now();
+      // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) raqamlar —
+      // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
+      const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
+      const passportVal = (document.getElementById("vizaPassport")?.value || "").trim().toUpperCase();
 
       // Ma'lumotlar bazasiga saqlash (asosiy, majburiy) va Telegramga bildirishnoma
       // (rasm baytlari to'g'ridan-to'g'ri, havola orqali emas) bir vaqtda ketadi —
       // shu tufayli "birinchisi yo'qoladi" degan poyga holati endi bo'lmaydi.
       const [visaResult, notified] = await Promise.all([
-        addVisa(phoneVal, url, id),
-        notifyTelegramVisa(up.base64, phoneVal, id)
+        addVisa(phoneVal, url, id, { barcode: barcodeVal, passport: passportVal }),
+        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal, passport: passportVal })
       ]);
 
       if(!visaResult.saved){
