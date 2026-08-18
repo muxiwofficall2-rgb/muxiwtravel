@@ -115,10 +115,17 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, phone, submissionId } = req.body || {};
+    const { imageBase64, phone, submissionId, barcode, passport } = req.body || {};
     if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
 
-    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${phone || "—"}`;
+    // OCR orqali (mijoz telefonida, bepul) avtomatik o'qilgan raqamlar —
+    // shu tufayli admin endi rasmdan qo'lda o'qib, qayta yozib o'tirmaydi,
+    // to'g'ridan-to'g'ri visa.mfa.uz'ga nusxalab qo'ya oladi.
+    const extraLines = [];
+    if (barcode) extraLines.push(`Ariza raqami (barkod): ${barcode}`);
+    if (passport) extraLines.push(`Pasport: ${passport}`);
+    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${phone || "—"}` +
+      (extraLines.length ? `\n${extraLines.join("\n")}` : "");
     const blob = base64ToBlob(imageBase64);
 
     let lastErr = null;
