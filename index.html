@@ -2499,20 +2499,67 @@ let ocrWorkerPromise = null;
 function getOcrWorker(){
   if(!ocrWorkerPromise){
     if(typeof Tesseract === "undefined") return Promise.reject(new Error("no tesseract"));
-    ocrWorkerPromise = Tesseract.createWorker("eng");
+    // Ikki til birga — rus (anketadagi "Номер паспорта" kabi yozuvlarni
+    // to'g'ri o'qish uchun) va ingliz (raqam/lotin harflarini aniqroq
+    // o'qish uchun, chunki bu belgilar inglizcha modelda yaxshiroq tanilar).
+    ocrWorkerPromise = Tesseract.createWorker(["eng","rus"]);
   }
   return ocrWorkerPromise;
 }
+
+/* Formatni "taxmin qilish" o'rniga — anketadagi yozuvning (label) o'zini
+   qidiradi ("...ПАСПОРТ...", "...ЗАЯВКИ.../БАРКОД...") va aynan o'sha
+   yozuv atrofidan qiymatni oladi. Shu tufayli pasport RAQAMI qanday
+   ko'rinishda bo'lishidan qat'i nazar (faqat raqam, harf+raqam, turli
+   davlat pasporti va h.k.) — baribir topa oladi. */
+function findValueNearLabel(lines, labelPatterns, valuePattern, excludeValue){
+  for(let i = 0; i < lines.length; i++){
+    const line = lines[i];
+    if(!labelPatterns.some(p => line.includes(p))) continue;
+    // Avval — xuddi shu qatorning o'zidan (yorliqdan keyingi qismidan) qidiramiz.
+    const candidates = [line, lines[i+1] || "", lines[i+2] || ""];
+    for(const cand of candidates){
+      const matches = cand.match(valuePattern) || [];
+      for(const m of matches){
+        const clean = m.replace(/[\s-]/g,"");
+        if(excludeValue && clean === excludeValue) continue; // ikkala maydon bir xil bo'lib qolmasin
+        if(clean.length >= 6) return clean;
+      }
+    }
+  }
+  return "";
+}
 function extractVisaFields(rawText){
-  const text = (rawText || "").toUpperCase();
-  // Ariza raqami (barkod) — odatda uzun, faqat raqamlardan iborat (10-16 xona)
-  const barcodeMatch = text.match(/\b\d{10,16}\b/);
-  // Pasport raqami — O'zbekiston pasporti: 2 ta lotin harfi + 7 ta raqam (masalan AB1234567)
-  const passportMatch = text.match(/\b[A-Z]{2}\s?-?\s?\d{7}\b/);
-  return {
-    barcode: barcodeMatch ? barcodeMatch[0] : "",
-    passport: passportMatch ? passportMatch[0].replace(/[\s-]/g,"") : ""
-  };
+  const upper = (rawText || "").toUpperCase();
+  // OCR ba'zan raqam/harflarni bir-biridan bo'shliq bilan ajratib o'qiydi
+  // (masalan "5 3 8 5 0..." — xira suratlarda tez-tez uchraydi). Bunday
+  // qatorlarni avval "yig'ib" qo'yamiz, shunda oddiy qidiruv ham ularni topadi.
+  const collapsed = upper.replace(/\b(?:[A-Z0-9][\s-]+){3,}[A-Z0-9]\b/g, m => m.replace(/[\s-]+/g,""));
+  const lines = collapsed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+
+  // 1) Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
+  //    atrofidan uzun raqam ketma-ketligini qidiramiz.
+  let barcode = findValueNearLabel(lines, ["ЗАЯВКИ","БАРКОД","BARCODE","ARIZA"], /\d{10,16}/g);
+  if(!barcode){
+    // Zaxira: butun matndan eng uzun raqam ketma-ketligini olamiz.
+    const m = collapsed.match(/\b\d{10,16}\b/);
+    if(m) barcode = m[0];
+  }
+
+  // 2) Pasport raqami — "ПАСПОРТ" / "PASSPORT" yozuvi atrofidan, FORMATIDAN
+  //    QAT'I NAZAR (faqat raqam, 2 harf+raqam, boshqa davlat pasporti —
+  //    baribir topadi), lekin barkod bilan bir xil bo'lib qolmasligi uchun
+  //    uni chetlab o'tamiz.
+  let passport = findValueNearLabel(
+    lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode
+  );
+  if(!passport){
+    // Zaxira: eng keng tarqalgan O'zbekiston formatini (2 harf + 7 raqam) qidiramiz.
+    const m = collapsed.match(/\b[A-Z]{2}\s?-?\s?\d{7}\b/);
+    if(m) passport = m[0].replace(/[\s-]/g,"");
+  }
+
+  return { barcode, passport: passport.replace(/[\s-]/g,"") };
 }
 async function runVizaOcr(file){
   const statusEl = document.getElementById("ocrStatus");
