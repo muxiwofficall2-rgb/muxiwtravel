@@ -2534,7 +2534,10 @@ function extractVisaFields(rawText){
   // OCR ba'zan raqam/harflarni bir-biridan bo'shliq bilan ajratib o'qiydi
   // (masalan "5 3 8 5 0..." — xira suratlarda tez-tez uchraydi). Bunday
   // qatorlarni avval "yig'ib" qo'yamiz, shunda oddiy qidiruv ham ularni topadi.
-  const collapsed = upper.replace(/\b(?:[A-Z0-9][\s-]+){3,}[A-Z0-9]\b/g, m => m.replace(/[\s-]+/g,""));
+  // MUHIM: bo'shliq/chiziqchani yig'ganda QATOR KO'CHISH (\n) ni ushlab
+  // qolmaslik kerak — aks holda ikki alohida qator (masalan barkod va
+  // pasport) bir-biriga "yopishib" qolib, ikkalasini ham yo'qotib qo'yadi.
+  const collapsed = upper.replace(/\b(?:[A-Z0-9][ \t-]+){3,}[A-Z0-9]\b/g, m => m.replace(/[ \t-]+/g,""));
   const lines = collapsed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
 
   // 1) Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
@@ -2554,9 +2557,18 @@ function extractVisaFields(rawText){
     lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode
   );
   if(!passport){
-    // Zaxira: eng keng tarqalgan O'zbekiston formatini (2 harf + 7 raqam) qidiramiz.
-    const m = collapsed.match(/\b[A-Z]{2}\s?-?\s?\d{7}\b/);
+    // Zaxira 1: harf+raqam formatini butun matndan qidiramiz (1-3 harf + 6-9 raqam —
+    // O'zbekiston, Turkmaniston va boshqa ko'plab davlat pasportlarini qamrab oladi).
+    const m = collapsed.match(/\b[A-Z]{1,3}[\s-]?\d{6,9}\b/);
     if(m) passport = m[0].replace(/[\s-]/g,"");
+  }
+  if(!passport){
+    // Zaxira 2: harf va raqam aralash bo'lgan, barkoddan farqli, 7-10 belgili
+    // istalgan ketma-ketlikni olamiz — bu eng keng, so'nggi imkoniyat.
+    const candidates = collapsed.match(/\b[A-Z0-9]{7,10}\b/g) || [];
+    for(const c of candidates){
+      if(/[A-Z]/.test(c) && /\d/.test(c) && c !== barcode){ passport = c; break; }
+    }
   }
 
   return { barcode, passport: passport.replace(/[\s-]/g,"") };
@@ -2590,7 +2602,7 @@ async function runVizaOcr(file){
     const fields = extractVisaFields(data.text);
     let foundAny = false;
     if(fields.barcode && !barcodeInput.value){ barcodeInput.value = fields.barcode; foundAny = true; }
-    if(fields.passport && !passportInput.value){ passportInput.value = formatPassportForDisplay(fields.passport); foundAny = true; }
+    if(fields.passport && !passportInput.value){ passportInput.value = fields.passport; foundAny = true; }
     statusEl.className = "ocr-status " + (foundAny ? "ok" : "empty");
     statusEl.textContent = foundAny ? t('ocrFound') : t('ocrNotFound');
   }catch(e){
@@ -2641,15 +2653,19 @@ function bindVizaForm(){
       const id = Date.now();
       // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) raqamlar —
       // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
+      // Saytda va bazada TOZA (bo'shliqsiz) shaklda saqlanadi, Telegramga esa
+      // o'qish oson bo'lishi uchun seriya va raqam orasida bo'shliq bilan
+      // ("A 1234567") yuboriladi.
       const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
       const passportVal = (document.getElementById("vizaPassport")?.value || "").trim().toUpperCase().replace(/\s+/g,"");
+      const passportForTelegram = formatPassportForDisplay(passportVal);
 
       // Ma'lumotlar bazasiga saqlash (asosiy, majburiy) va Telegramga bildirishnoma
       // (rasm baytlari to'g'ridan-to'g'ri, havola orqali emas) bir vaqtda ketadi —
       // shu tufayli "birinchisi yo'qoladi" degan poyga holati endi bo'lmaydi.
       const [visaResult, notified] = await Promise.all([
         addVisa(phoneVal, url, id, { barcode: barcodeVal, passport: passportVal }),
-        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal, passport: passportVal })
+        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal, passport: passportForTelegram })
       ]);
 
       if(!visaResult.saved){
