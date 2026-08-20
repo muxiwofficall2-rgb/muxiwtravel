@@ -2512,12 +2512,39 @@ function getOcrWorker(){
    yozuv atrofidan qiymatni oladi. Shu tufayli pasport RAQAMI qanday
    ko'rinishda bo'lishidan qat'i nazar (faqat raqam, harf+raqam, turli
    davlat pasporti va h.k.) — baribir topa oladi. */
-function findValueNearLabel(lines, labelPatterns, valuePattern, excludeValue){
+// To'lov kvitansiyasi (chek) ko'pincha anketaning USTIGA yopishtirilgan
+// bo'ladi — va uning ichidagi kodlar (RRN, avtorizatsiya kodi, chek raqami
+// va h.k.) bizning qidiruvimizni CHALG'ITIB, haqiqiy pasport/barkod o'rniga
+// chekning raqamini olib qo'yishi mumkin edi. Shu qatorlarni "xavfli zona"
+// deb belgilab, butunlay chetlab o'tamiz.
+const RECEIPT_MARKERS = [
+  "СУММА","КОМИССИЯ","RRN","АВТОРИЗАЦ","ОПЛАЧЕНО","ОПЛАТА","ПРИНЯТ","ЧК ",
+  "KAPTA","КАРТА","MIR","VISA","AID","TVR","TSI","ID0000","КОД (ХОСТ)",
+  "ДАТА (ХОСТ)","ДАТА (ПРИНЯТ","ПОДПИСЬ КАССИРА","ОДОБРЕНО","RUB"
+];
+function findReceiptZoneLines(lines){
+  const zone = new Set();
+  lines.forEach((line, i)=>{
+    if(RECEIPT_MARKERS.some(marker => line.includes(marker))){
+      // O'sha qatorning o'zi va atrofidagi 1 qatorni ham xavfli deb belgilaymiz
+      // (chek matni odatda bir necha qatorga cho'zilgan bo'ladi).
+      zone.add(i-1); zone.add(i); zone.add(i+1);
+    }
+  });
+  return zone;
+}
+function findValueNearLabel(lines, labelPatterns, valuePattern, excludeValue, skipSet){
   for(let i = 0; i < lines.length; i++){
+    if(skipSet && skipSet.has(i)) continue;
     const line = lines[i];
     if(!labelPatterns.some(p => line.includes(p))) continue;
-    // Avval — xuddi shu qatorning o'zidan (yorliqdan keyingi qismidan) qidiramiz.
-    const candidates = [line, lines[i+1] || "", lines[i+2] || ""];
+    // Avval — xuddi shu qatorning o'zidan, so'ng keyingi bir necha qatordan
+    // qidiramiz (jadval ko'rinishidagi anketalarda qiymat yorliqdan
+    // bir necha qator pastda joylashgan bo'lishi mumkin).
+    const candidates = [line];
+    for(let j = i+1; j <= Math.min(i+5, lines.length-1); j++){
+      if(!skipSet || !skipSet.has(j)) candidates.push(lines[j]);
+    }
     for(const cand of candidates){
       const matches = cand.match(valuePattern) || [];
       for(const m of matches){
@@ -2539,33 +2566,42 @@ function extractVisaFields(rawText){
   // pasport) bir-biriga "yopishib" qolib, ikkalasini ham yo'qotib qo'yadi.
   const collapsed = upper.replace(/\b(?:[A-Z0-9][ \t-]+){3,}[A-Z0-9]\b/g, m => m.replace(/[ \t-]+/g,""));
   const lines = collapsed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+  const receiptZone = findReceiptZoneLines(lines);
+  // Zaxira (blind) qidiruv uchun — chekka tegishli qatorlarni butunlay
+  // olib tashlangan "toza" matn.
+  const safeLines = lines.filter((_, i) => !receiptZone.has(i));
+  const safeText = safeLines.join("\n");
 
   // 1) Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
   //    atrofidan uzun raqam ketma-ketligini qidiramiz.
-  let barcode = findValueNearLabel(lines, ["ЗАЯВКИ","БАРКОД","BARCODE","ARIZA"], /\d{10,16}/g);
+  let barcode = findValueNearLabel(lines, ["ЗАЯВКИ","БАРКОД","BARCODE","ARIZA"], /\d{10,16}/g, null, receiptZone);
   if(!barcode){
-    // Zaxira: butun matndan eng uzun raqam ketma-ketligini olamiz.
-    const m = collapsed.match(/\b\d{10,16}\b/);
-    if(m) barcode = m[0];
+    // Zaxira: chekka tegishli bo'lmagan qatorlardan eng UZUN raqam
+    // ketma-ketligini olamiz. Anketa barkodi deyarli har doim varaqning
+    // ENG PASTIDA (oxirida) bo'ladi, chek esa yuqorida — shuning uchun
+    // OXIRGI (eng pastdagi) mosligni tanlaymiz, birinchisini emas.
+    const matches = safeText.match(/\b\d{10,16}\b/g) || [];
+    if(matches.length) barcode = matches[matches.length - 1];
   }
 
   // 2) Pasport raqami — "ПАСПОРТ" / "PASSPORT" yozuvi atrofidan, FORMATIDAN
   //    QAT'I NAZAR (faqat raqam, 2 harf+raqam, boshqa davlat pasporti —
-  //    baribir topadi), lekin barkod bilan bir xil bo'lib qolmasligi uchun
-  //    uni chetlab o'tamiz.
+  //    baribir topadi), lekin barkod bilan bir xil bo'lib qolmasligi va
+  //    chek ichidagi kodlar bilan chalkashmasligi uchun ularni chetlab o'tamiz.
   let passport = findValueNearLabel(
-    lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode
+    lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode, receiptZone
   );
   if(!passport){
-    // Zaxira 1: harf+raqam formatini butun matndan qidiramiz (1-3 harf + 6-9 raqam —
-    // O'zbekiston, Turkmaniston va boshqa ko'plab davlat pasportlarini qamrab oladi).
-    const m = collapsed.match(/\b[A-Z]{1,3}[\s-]?\d{6,9}\b/);
+    // Zaxira 1: harf+raqam formatini chekka tegishli bo'lmagan qatorlardan
+    // qidiramiz (1-3 harf + 6-9 raqam — O'zbekiston, Turkmaniston va boshqa
+    // ko'plab davlat pasportlarini qamrab oladi).
+    const m = safeText.match(/\b[A-Z]{1,3}[\s-]?\d{6,9}\b/);
     if(m) passport = m[0].replace(/[\s-]/g,"");
   }
   if(!passport){
     // Zaxira 2: harf va raqam aralash bo'lgan, barkoddan farqli, 7-10 belgili
     // istalgan ketma-ketlikni olamiz — bu eng keng, so'nggi imkoniyat.
-    const candidates = collapsed.match(/\b[A-Z0-9]{7,10}\b/g) || [];
+    const candidates = safeText.match(/\b[A-Z0-9]{7,10}\b/g) || [];
     for(const c of candidates){
       if(/[A-Z]/.test(c) && /\d/.test(c) && c !== barcode){ passport = c; break; }
     }
