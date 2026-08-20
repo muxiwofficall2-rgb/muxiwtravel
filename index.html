@@ -2583,6 +2583,62 @@ function formatPassportForDisplay(clean){
   const m = clean.match(/^([A-Z]{1,3})(\d{5,9})$/);
   return m ? `${m[1]} ${m[2]}` : clean;
 }
+/* ---- Rasmni OCR'dan OLDIN "tozalash" — rang muammosini (pushti, sariq,
+   har qanday yorug'lik nurlanishi) BUTUNLAY yo'q qiladi (kulrang qilib),
+   va kontrastni oshirib, xira/kuchsiz matnni ham aniqroq qiladi. Bir nechta
+   usul ketma-ket sinaladi — biri yetarli bo'lmasa, kuchliroq usulga o'tadi. ---- */
+function makeOcrVariant(img, mode){
+  let w = img.naturalWidth || img.width, h = img.naturalHeight || img.height;
+  const maxDim = 1800;
+  if(Math.max(w,h) > maxDim){
+    const scale = maxDim / Math.max(w,h);
+    w = Math.round(w*scale); h = Math.round(h*scale);
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = w; canvas.height = h;
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(img, 0, 0, w, h);
+  if(mode === "raw") return canvas;
+
+  const imgData = ctx.getImageData(0, 0, w, h);
+  const d = imgData.data;
+  const n = w * h;
+  const gray = new Float32Array(n);
+  let min = 255, max = 0;
+  for(let i = 0, p = 0; i < d.length; i += 4, p++){
+    const g = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    gray[p] = g;
+    if(g < min) min = g;
+    if(g > max) max = g;
+  }
+  const range = Math.max(1, max - min);
+
+  if(mode === "contrast"){
+    // Kulrangga o'tkazish (rang bosishini yo'qotadi) + kontrastni cho'zish —
+    // eng ko'p holatlarda yetarli bo'ladigan, birinchi urinish.
+    for(let i = 0, p = 0; i < d.length; i += 4, p++){
+      let v = ((gray[p]-min)/range) * 255;
+      v = Math.min(255, Math.max(0, (v-128)*1.5 + 128));
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+  }else if(mode === "threshold"){
+    // Kuchli qora-oq chegaralash — juda past kontrastli yoki kuchli rang
+    // bosgan suratlar uchun oxirgi, eng kuchli chora.
+    let sum = 0;
+    for(let p = 0; p < n; p++) sum += gray[p];
+    const mean = sum / n;
+    for(let i = 0, p = 0; i < d.length; i += 4, p++){
+      const v = gray[p] > mean ? 255 : 0;
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+  }
+  ctx.putImageData(imgData, 0, 0);
+  return canvas;
+}
+function canvasToBlob(canvas){
+  return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
+}
+
 async function runVizaOcr(file){
   const statusEl = document.getElementById("ocrStatus");
   const barcodeInput = document.getElementById("vizaBarcode");
@@ -2597,12 +2653,31 @@ async function runVizaOcr(file){
   statusEl.className = "ocr-status working";
   statusEl.textContent = t('ocrWorking');
   try{
+    const img = await loadImage(file);
     const worker = await getOcrWorker();
-    const { data } = await worker.recognize(file);
-    const fields = extractVisaFields(data.text);
+
+    // Bir necha "tozalash" usulini ketma-ket sinaymiz. Birinchisi (kontrastli
+    // kulrang) yetarli natija bersa — tezda to'xtaymiz. Aks holda asl rasmni,
+    // so'ng eng kuchli (qora-oq) usulni ham sinab ko'ramiz. Turli
+    // urinishlardan topilgan maydonlarni birlashtiramiz (masalan barkod
+    // 1-urinishda, pasport 3-urinishda topilishi ham mumkin).
+    const combined = { barcode:"", passport:"" };
+    const modes = ["contrast", "raw", "threshold"];
+    for(const mode of modes){
+      if(combined.barcode && combined.passport) break;
+      try{
+        const canvas = makeOcrVariant(img, mode);
+        const blob = await canvasToBlob(canvas);
+        const { data } = await worker.recognize(blob || file);
+        const fields = extractVisaFields(data.text);
+        if(fields.barcode && !combined.barcode) combined.barcode = fields.barcode;
+        if(fields.passport && !combined.passport) combined.passport = fields.passport;
+      }catch(_){ /* shu usul ishlamasa, keyingisini sinaymiz */ }
+    }
+
     let foundAny = false;
-    if(fields.barcode && !barcodeInput.value){ barcodeInput.value = fields.barcode; foundAny = true; }
-    if(fields.passport && !passportInput.value){ passportInput.value = fields.passport; foundAny = true; }
+    if(combined.barcode && !barcodeInput.value){ barcodeInput.value = combined.barcode; foundAny = true; }
+    if(combined.passport && !passportInput.value){ passportInput.value = combined.passport; foundAny = true; }
     statusEl.className = "ocr-status " + (foundAny ? "ok" : "empty");
     statusEl.textContent = foundAny ? t('ocrFound') : t('ocrNotFound');
   }catch(e){
