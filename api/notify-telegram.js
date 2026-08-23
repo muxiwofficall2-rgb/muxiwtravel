@@ -36,6 +36,13 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 function base64ToBlob(dataUrl) {
   const base64 = dataUrl.includes(",") ? dataUrl.split(",")[1] : dataUrl;
   const buffer = Buffer.from(base64, "base64");
@@ -56,6 +63,7 @@ async function tgSendPhoto(blob, caption, submissionId) {
   const form = new FormData();
   form.append("chat_id", ADMIN_CHAT_ID);
   form.append("caption", caption);
+  form.append("parse_mode", "HTML");
   if (submissionId) {
     form.append(
       "reply_markup",
@@ -83,13 +91,15 @@ async function tgSendPhoto(blob, caption, submissionId) {
   return data;
 }
 
-async function tgSendMessage(text) {
+async function tgSendMessage(text, parseMode) {
+  const payload = { chat_id: ADMIN_CHAT_ID, text };
+  if (parseMode) payload.parse_mode = parseMode;
   const r = await fetchWithTimeout(
     `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chat_id: ADMIN_CHAT_ID, text }),
+      body: JSON.stringify(payload),
     },
     7000
   );
@@ -115,23 +125,28 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, phone, submissionId, barcode, passport } = req.body || {};
+    const { imageBase64, phone, submissionId, barcode } = req.body || {};
     if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
 
-    // OCR orqali (mijoz telefonida, bepul) avtomatik o'qilgan raqamlar —
-    // shu tufayli admin endi rasmdan qo'lda o'qib, qayta yozib o'tirmaydi,
-    // to'g'ridan-to'g'ri visa.mfa.uz'ga nusxalab qo'ya oladi.
-    const extraLines = [];
-    if (barcode) extraLines.push(`Ariza raqami (barkod): ${barcode}`);
-    if (passport) extraLines.push(`Pasport: ${passport}`);
-    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${phone || "—"}` +
-      (extraLines.length ? `\n${extraLines.join("\n")}` : "");
+    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${escapeHtml(phone) || "—"}`;
     const blob = base64ToBlob(imageBase64);
 
     let lastErr = null;
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         await tgSendPhoto(blob, caption, submissionId);
+
+        // OCR orqali (mijoz telefonida, bepul) avtomatik o'qilgan barkod —
+        // rasm TAGIDA, ALOHIDA xabar qilib yuboriladi, Telegram'ning <code>
+        // formatida — admin ustiga BIR MARTA teginsa, avtomatik nusxalanadi
+        // (qo'lda belgilashga hojat yo'q). Bu — best effort: agar bu
+        // qo'shimcha xabar ketmay qolsa ham, asosiy rasm va so'rov
+        // allaqachon saqlangan/yetkazilgan bo'ladi, hech narsa yo'qolmaydi.
+        if (barcode) {
+          const msg = `📋 <b>Ariza raqami (barkod):</b>\n<code>${escapeHtml(barcode)}</code>`;
+          tgSendMessage(msg, "HTML").catch(() => {});
+        }
+
         return res.status(200).json({ ok: true, method: "photo" });
       } catch (e) {
         lastErr = e;
@@ -142,7 +157,9 @@ export default async function handler(req, res) {
     // Photo delivery failed twice in a row (extremely rare once we're sending
     // bytes directly) — still make sure the admin gets *something*.
     const fallbackText =
-      caption + `\n\n⚠️ Rasm avtomatik yuborilmadi (${String(lastErr && lastErr.message || lastErr)}). ` +
+      `Viza tekshiruvi so'rovi.\nTelefon: ${phone || "—"}` +
+      (barcode ? `\nAriza raqami (barkod): ${barcode}` : "") +
+      `\n\n⚠️ Rasm avtomatik yuborilmadi (${String(lastErr && lastErr.message || lastErr)}). ` +
       `Iltimos, admin panelda ko'ring.`;
     const sent = await tgSendMessage(fallbackText).catch(() => false);
     return res.status(200).json({ ok: sent, method: sent ? "text-fallback" : "failed" });
