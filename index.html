@@ -351,6 +351,36 @@
   .field-label{font-size:14px;font-weight:600;margin:12px 0 6px;}
   .error-msg{color:var(--accent-red);font-size:12.5px;margin:-2px 0 10px;display:none;}
 
+  .phone-input-wrap{position:relative;}
+  .phone-input-row{display:flex;gap:8px;}
+  .phone-country-btn{
+    flex-shrink:0;display:flex;align-items:center;gap:6px;
+    background:var(--surface);border:1px solid var(--glass-border);
+    border-radius:12px;padding:0 12px;cursor:pointer;font-family:inherit;
+    color:var(--text);font-size:15px;font-weight:700;
+  }
+  .phone-flag{font-size:19px;}
+  .phone-caret{font-size:10px;color:var(--text-dim);margin-left:2px;}
+  .phone-number-input{
+    flex:1;min-width:0;background:var(--surface);border:1px solid var(--glass-border);
+    border-radius:12px;color:var(--text);padding:12px;font-size:15px;font-weight:600;
+    font-family:inherit;
+  }
+  .phone-country-list{
+    position:absolute;top:calc(100% + 6px);left:0;z-index:20;
+    display:flex;flex-direction:column;width:100%;max-width:280px;
+    background:var(--bg-2);border:1px solid var(--glass-border);border-radius:14px;
+    box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden;
+  }
+  .phone-country-opt{
+    display:flex;align-items:center;gap:8px;padding:12px 14px;
+    background:none;border:none;border-bottom:1px solid var(--glass-border);
+    color:var(--text);font-size:14px;font-weight:600;font-family:inherit;
+    cursor:pointer;text-align:left;
+  }
+  .phone-country-opt:last-child{border-bottom:none;}
+  .phone-country-code{margin-left:auto;color:var(--text-dim);font-weight:700;}
+
   .upload-box{
     width:100%;min-height:108px;background:var(--glass);
     border:2px dashed var(--glass-border);border-radius:16px;margin-bottom:6px;cursor:pointer;
@@ -809,6 +839,7 @@ const T = {
     vizaSubmitText:"Anketa yoki pasport rasmingizni yuklang va telefon raqamingizni qoldiring — mutaxassisimiz tez orada siz bilan bog'lanadi.",
     vizaAttention:"Iltimos, anketangizning aniq suratini yuboring",
     yourPhone:"Telefon raqami", uploadPhoto:"Hujjat rasmini yuklash",
+    phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     photoPreparing:"Rasm tayyorlanmoqda…", photoUploading:"Rasm yuklanmoqda…",
     photoReady:"Rasm tayyor ✓", photoFailed:"Rasm yuklanmadi — bosib qayta urinib ko'ring",
     sending:"Yuborilmoqda…",
@@ -816,7 +847,6 @@ const T = {
     submitFail:"Yuborilmadi. Internetni tekshiring va “Yuborish”ni qayta bosing.",
     phoneInvalid:"Telefon raqamini to'liq kiriting",
     barcodeLabel:"Ariza raqami (barkod)", barcodePh:"Avtomatik aniqlanadi yoki qo'lda yozing",
-    passportLabel:"Pasport raqami", passportPh:"Masalan: AB 1234567",
     ocrWorking:"📷 Rasmdan raqamlar aniqlanmoqda…", ocrFound:"✓ Raqamlar avtomatik topildi — tekshirib ko'ring",
     ocrNotFound:"Raqamlar avtomatik topilmadi — pastiga qo'lda yozing (ixtiyoriy)",
     myVisaStatus:"So'rovim holati",
@@ -913,6 +943,7 @@ const T = {
     vizaSubmitText:"Загрузите фотографию анкеты или паспорта и оставьте номер телефона — наш специалист свяжется с вами в ближайшее время.",
     vizaAttention:"Пожалуйста, отправьте чёткое фото вашей анкеты",
     yourPhone:"Номер телефона", uploadPhoto:"Загрузить фото документа",
+    phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     photoPreparing:"Фото подготавливается…", photoUploading:"Фото загружается…",
     photoReady:"Фото готово ✓", photoFailed:"Фото не загрузилось — нажмите, чтобы повторить",
     sending:"Отправляется…",
@@ -920,7 +951,6 @@ const T = {
     submitFail:"Не отправлено. Проверьте интернет и нажмите «Отправить» ещё раз.",
     phoneInvalid:"Введите номер телефона полностью",
     barcodeLabel:"Номер заявки (баркод)", barcodePh:"Определится автоматически или введите вручную",
-    passportLabel:"Номер паспорта", passportPh:"Например: AB 1234567",
     ocrWorking:"📷 Распознаём цифры с фото…", ocrFound:"✓ Цифры найдены автоматически — проверьте",
     ocrNotFound:"Не удалось распознать автоматически — введите ниже вручную (необязательно)",
     myVisaStatus:"Статус моей заявки",
@@ -1017,6 +1047,7 @@ const T = {
     vizaSubmitText:"Anketa ýa-da pasport suratyňyzy ýükläň we telefon belgiňizi goýuň — hünärmenimiz siz bilen basym habarlaşar.",
     vizaAttention:"Haýyş, anketaňyzyň anyk suratyny iberiň",
     yourPhone:"Telefon belgisi", uploadPhoto:"Resminama suratyny ýüklemek",
+    phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     photoPreparing:"Surat taýýarlanýar…", photoUploading:"Surat ýüklenýär…",
     photoReady:"Surat taýýar ✓", photoFailed:"Surat ýüklenmedi — gaýtadan synanyşmak üçin basyň",
     sending:"Iberilýär…",
@@ -1024,7 +1055,6 @@ const T = {
     submitFail:"Iberilmedi. Interneti barlaň we \"Ibermek\" düwmesine gaýtadan basyň.",
     phoneInvalid:"Telefon belgisini doly giriziň",
     barcodeLabel:"Arza belgisi (barkod)", barcodePh:"Awtomatik anyklanýar ýa-da elde ýazyň",
-    passportLabel:"Pasport belgisi", passportPh:"Mysal: AB 1234567",
     ocrWorking:"📷 Suratdan sanlar anyklanylýar…", ocrFound:"✓ Sanlar awtomatik tapyldy — barlaň",
     ocrNotFound:"Sanlar awtomatik tapylmady — aşakda elde ýazyň (hökmany däl)",
     myVisaStatus:"Sargydymyň ýagdaýy",
@@ -1365,19 +1395,6 @@ function formatSize(b){
   if(b < 1048576) return (b/1024).toFixed(0) + " KB";
   return (b/1048576).toFixed(2) + " MB";
 }
-function formatRuPhone(raw){
-  let d = raw.replace(/\D/g,"");
-  if(d.startsWith("8")) d = "7" + d.slice(1);
-  if(!d.startsWith("7")) d = "7" + d;
-  d = d.slice(0,11);
-  const r = d.slice(1);
-  let out = "+7";
-  if(r.length) out += " " + r.slice(0,3);
-  if(r.length >= 4) out += " " + r.slice(3,6);
-  if(r.length >= 7) out += "-" + r.slice(6,8);
-  if(r.length >= 9) out += "-" + r.slice(8,10);
-  return out;
-}
 
 /* ================== TARMOQ ================== */
 async function request(url, opts, { timeout = 30000, attempts = 2 } = {}){
@@ -1441,7 +1458,7 @@ async function notifyTelegramVisa(base64, phone, submissionId, extra){
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
         imageBase64: base64, phone, submissionId,
-        barcode: extra && extra.barcode, passport: extra && extra.passport
+        barcode: extra && extra.barcode
       })
     }, { timeout:20000, attempts:1 });
     const data = await res.json().catch(()=> null);
@@ -1567,7 +1584,7 @@ async function addVisa(phone, imageUrl, id, extra){
   const list = (await fetchVisa()).slice();
   list.unshift({
     id, phone, imageUrl, date: new Date().toLocaleString("ru-RU"), status:"new",
-    barcode: (extra && extra.barcode) || "", passport: (extra && extra.passport) || ""
+    barcode: (extra && extra.barcode) || ""
   });
   const r = await kvSet("visa_submissions", list.slice(0, MAX_VISA_ITEMS));
   return { id, saved: r.ok, detail: r.detail };
@@ -1870,7 +1887,6 @@ function vizaScreen(){
     <div class="section-text">${esc(t('vizaText'))}</div>
     <div class="list-col">
       <a class="glass-btn" href="${VISA_LINK}" target="_blank" rel="noopener">${iconCircle(ICONS.visa)}<span class="label">${esc(t('vizaCheck'))}</span></a>
-      <a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" rel="noopener">${iconCircle(ICONS.telegram)}<span class="label">${esc(t('vizaGroup'))}</span></a>
       <button class="glass-btn glass-btn-red" data-go="vizaForm">${iconCircle(ICONS.upload)}<span class="label">${esc(t('vizaSubmitBtn'))}</span><span class="arrow">→</span></button>
       <button class="glass-btn" data-go="myVisaStatus">${iconCircle(ICONS.bell)}<span class="label">${esc(t('myVisaStatus'))}</span><span class="arrow">→</span></button>
     </div>
@@ -1886,6 +1902,67 @@ function vizaScreen(){
       </div>
     </div>
   </div>`;
+}
+
+/* Telegram uslubidagi telefon kiritish — davlat bayrog'i va kodi (masalan
+   🇷🇺 +7) tugma orqali tanlanadi, mijoz esa faqat qolgan raqamlarni
+   kiritadi. UZ/RU/TM davlatlari qo'llab-quvvatlanadi. */
+const PHONE_COUNTRIES = [
+  { code:"+998", flag:"🇺🇿", name:"O'zbekiston" },
+  { code:"+7",   flag:"🇷🇺", name:"Rossiya" },
+  { code:"+993", flag:"🇹🇲", name:"Türkmenistan" }
+];
+function phoneInput(prefix){
+  return `<div class="phone-input-wrap">
+    <div class="phone-input-row">
+      <button type="button" class="phone-country-btn" id="${prefix}CountryBtn">
+        <span class="phone-flag" id="${prefix}Flag">🇷🇺</span>
+        <span class="phone-code" id="${prefix}Code">+7</span>
+        <span class="phone-caret">▾</span>
+      </button>
+      <input type="tel" inputmode="numeric" id="${prefix}PhoneNum" class="phone-number-input" placeholder="900 123 45 67">
+    </div>
+    <div class="phone-country-list" id="${prefix}CountryList" style="display:none">
+      ${PHONE_COUNTRIES.map(c => `<button type="button" class="phone-country-opt" data-code="${c.code}" data-flag="${c.flag}">
+        <span class="phone-flag">${c.flag}</span> ${esc(c.name)} <span class="phone-country-code">${c.code}</span>
+      </button>`).join("")}
+    </div>
+  </div>`;
+}
+function wirePhoneInput(prefix){
+  const btn = document.getElementById(prefix + "CountryBtn");
+  const list = document.getElementById(prefix + "CountryList");
+  const flag = document.getElementById(prefix + "Flag");
+  const code = document.getElementById(prefix + "Code");
+  const num = document.getElementById(prefix + "PhoneNum");
+  if(!btn || !list || !num) return;
+
+  btn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    list.style.display = (list.style.display === "none" || !list.style.display) ? "flex" : "none";
+  });
+  list.querySelectorAll(".phone-country-opt").forEach(opt=>{
+    opt.addEventListener("click", ()=>{
+      flag.textContent = opt.dataset.flag;
+      code.textContent = opt.dataset.code;
+      list.style.display = "none";
+      num.focus();
+    });
+  });
+  document.addEventListener("click", (e)=>{
+    if(!list.contains(e.target) && e.target !== btn && !btn.contains(e.target)) list.style.display = "none";
+  });
+  num.addEventListener("input", ()=>{
+    num.value = num.value.replace(/[^\d ]/g, "");
+  });
+}
+function getPhoneValue(prefix){
+  const code = document.getElementById(prefix + "Code")?.textContent || "";
+  const digits = (document.getElementById(prefix + "PhoneNum")?.value || "").replace(/\D/g,"");
+  return { full: code + digits, digits, code };
+}
+function isPhoneValid(prefix){
+  return getPhoneValue(prefix).digits.length >= 7;
 }
 
 function dropzone(prefix, label){
@@ -1916,10 +1993,9 @@ function vizaFormScreen(){
     <div class="ocr-status" id="ocrStatus" style="display:none"></div>
     <div class="field-label">${esc(t('barcodeLabel'))}</div>
     <input type="text" inputmode="numeric" id="vizaBarcode" placeholder="${esc(t('barcodePh'))}">
-    <div class="field-label">${esc(t('passportLabel'))}</div>
-    <input type="text" id="vizaPassport" placeholder="${esc(t('passportPh'))}" style="text-transform:uppercase">
-    <div class="field-label">${esc(t('yourPhone'))}<span class="required-star">*</span></div>
-    <input type="tel" inputmode="tel" id="vizaPhone" placeholder="+7 900 123-45-67">
+    <div class="field-label" style="margin-top:14px">${esc(t('yourPhone'))}<span class="required-star">*</span></div>
+    <div class="section-text" style="margin:4px 0 8px">${esc(t('phoneHint'))}</div>
+    ${phoneInput('viza')}
     <div class="error-msg" id="vizaPhoneErr">${esc(t('phoneInvalid'))}</div>
     <button class="primary-btn" id="vizaSubmit">${esc(t('send'))}</button>
     <div class="footer-note" id="vizaStatus" style="min-height:18px"></div>
@@ -2512,40 +2588,24 @@ function findValueNearLabel(lines, labelPatterns, valuePattern, excludeValue, sk
 }
 function extractVisaFields(rawText){
   const upper = (rawText || "").toUpperCase();
-  // OCR ba'zan raqam/harflarni bir-biridan bo'shliq bilan ajratib o'qiydi
+  // OCR ba'zan raqamlarni bir-biridan bo'shliq bilan ajratib o'qiydi
   // (masalan "5 3 8 5 0..." — xira suratlarda tez-tez uchraydi). Bunday
   // qatorlarni avval "yig'ib" qo'yamiz, shunda oddiy qidiruv ham ularni topadi.
   // MUHIM: bo'shliq/chiziqchani yig'ganda QATOR KO'CHISH (\n) ni ushlab
-  // qolmaslik kerak — aks holda ikki alohida qator (masalan barkod va
-  // pasport) bir-biriga "yopishib" qolib, ikkalasini ham yo'qotib qo'yadi.
+  // qolmaslik kerak — aks holda qatorlar bir-biriga "yopishib" qolib,
+  // barkodni yo'qotib qo'yadi.
   const collapsed = upper.replace(/\b(?:[A-Z0-9][ \t-]+){3,}[A-Z0-9]\b/g, m => m.replace(/[ \t-]+/g,""));
   const lines = collapsed.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
   const receiptZone = findReceiptZoneLines(lines);
-  // Zaxira (blind) qidiruv uchun — chekka tegishli qatorlarni butunlay
-  // olib tashlangan "toza" matn.
+  // To'lov cheki (agar bo'lsa) chetlab o'tilgan "toza" matn.
   const safeLines = lines.filter((_, i) => !receiptZone.has(i));
   const safeText = safeLines.join("\n");
 
-  // MUHIM QO'SHIMCHA HIMOYA: to'lov cheki OCR tomonidan juda chalkash
-  // o'qilib, "СУММА"/"RRN" kabi so'zlarning o'zi tanib bo'lmas holga kelib
-  // qolishi mumkin — shunda yuqoridagi so'z-asosli himoya ishlamay qoladi.
-  // Shuning uchun QO'SHIMCHA, SO'ZGA BOG'LIQ BO'LMAGAN himoya qo'shamiz:
-  // "PASPORT" yozuvi (u deyarli har doim to'g'ri o'qiladi, chunki lotin
-  // harflari bilan yozilgan) qayerda uchrashini topamiz — chek DOIM shu
-  // yozuvdan OLDIN keladi, shuning uchun undan oldingi hamma narsani
-  // (chek qanchalik chalkash o'qilgan bo'lmasin) butunlay chetlab o'tamiz.
-  const passportLabelIdx = lines.findIndex(l => ["ПАСПОРТ","PASSPORT","PASPORT"].some(p => l.includes(p)));
-  const afterLabelText = passportLabelIdx >= 0
-    ? lines.filter((_, i) => i >= passportLabelIdx && !receiptZone.has(i)).join("\n")
-    : safeText;
-
-  // 1) Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
-  //    atrofidan uzun raqam ketma-ketligini qidiramiz. `Tier` — topilgan
-  //    natijaning ISHONCHLILIK DARAJASI (0=eng ishonchli, aniq yorliq
-  //    yonidan topilgan; kattaroq raqam — kamroq ishonchli, taxminiyroq
-  //    zaxira usuli). Bir nechta OCR urinishini birlashtirganda, ENG
-  //    ISHONCHLI (eng kichik tier) natija g'olib chiqadi — shunchaki
-  //    "birinchi topilgan" emas.
+  // Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
+  // atrofidan uzun raqam ketma-ketligini qidiramiz. `Tier` — topilgan
+  // natijaning ISHONCHLILIK DARAJASI (0=eng ishonchli, aniq yorliq yonidan
+  // topilgan; 1=zaxira usuli). Bir nechta OCR urinishini birlashtirganda,
+  // ENG ISHONCHLI (eng kichik tier) natija g'olib chiqadi.
   let barcode = findValueNearLabel(lines, ["ЗАЯВКИ","БАРКОД","BARCODE","ARIZA"], /\d{10,16}/g, null, receiptZone);
   let barcodeTier = barcode ? 0 : 99;
   if(!barcode){
@@ -2557,34 +2617,7 @@ function extractVisaFields(rawText){
     if(matches.length){ barcode = matches[matches.length - 1]; barcodeTier = 1; }
   }
 
-  // 2) Pasport raqami — "ПАСПОРТ" / "PASSPORT" yozuvi atrofidan, FORMATIDAN
-  //    QAT'I NAZAR (faqat raqam, 2 harf+raqam, boshqa davlat pasporti —
-  //    baribir topadi), lekin barkod bilan bir xil bo'lib qolmasligi va
-  //    chek ichidagi kodlar bilan chalkashmasligi uchun ularni chetlab o'tamiz.
-  let passport = findValueNearLabel(
-    lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode, receiptZone
-  );
-  let passportTier = passport ? 0 : 99;
-  if(!passport){
-    // Zaxira 1: harf+raqam formatini "Pasport" yorlig'idan KEYINGI matndan
-    // qidiramiz (0-3 harf + 6-9 raqam — O'zbekiston, Turkmaniston va boshqa
-    // ko'plab davlat pasportlarini, harfsiz pasportlarni ham qamrab oladi).
-    // Shu tufayli hujjat yuqorisidagi chek matni (qanchalik chalkash
-    // o'qilgan bo'lmasin) hech qachon pasport deb noto'g'ri qabul qilinmaydi.
-    const m = afterLabelText.match(/\b[A-Z]{0,3}[\s-]?\d{6,9}\b/);
-    if(m){ passport = m[0].replace(/[\s-]/g,""); passportTier = 1; }
-  }
-  if(!passport){
-    // Zaxira 2: harf va raqam aralash bo'lgan, barkoddan farqli, 7-10 belgili
-    // istalgan ketma-ketlikni olamiz — bu eng keng, ENG KAM ishonchli,
-    // so'nggi imkoniyat (shuning uchun eng past ustuvorlikka ega).
-    const candidates = afterLabelText.match(/\b[A-Z0-9]{7,10}\b/g) || [];
-    for(const c of candidates){
-      if(/[A-Z]/.test(c) && /\d/.test(c) && c !== barcode){ passport = c; passportTier = 2; break; }
-    }
-  }
-
-  return { barcode, barcodeTier, passport: passport.replace(/[\s-]/g,""), passportTier };
+  return { barcode, barcodeTier };
 }
 /* Bir nechta OCR urinishidan (masalan turli "tozalash" usullaridan) kelgan
    natijalarni birlashtiradi — shunchaki "birinchi topilgan g'olib" emas,
@@ -2596,19 +2629,8 @@ function mergeVisaFields(a, b){
     return (tierA <= tierB) ? valA : valB;
   }
   return {
-    barcode: pick(a && a.barcode, (a && a.barcodeTier) ?? 99, b && b.barcode, (b && b.barcodeTier) ?? 99),
-    passport: pick(a && a.passport, (a && a.passportTier) ?? 99, b && b.passport, (b && b.passportTier) ?? 99)
+    barcode: pick(a && a.barcode, (a && a.barcodeTier) ?? 99, b && b.barcode, (b && b.barcodeTier) ?? 99)
   };
-}
-/* Ekranda o'qish uchun — pasport seriyasi (harflar) bilan raqamini
-   bo'shliq bilan ajratib ko'rsatamiz (masalan "A 2884775"), shunda mijoz
-   va admin bir qarashda ikkalasini aniq ajrata oladi. MUHIM: bu faqat
-   EKRANDAGI ko'rinish uchun — Telegramga va davlat saytiga yuboriladigan
-   asl qiymat har doim TOZA (bo'shliqsiz) bo'lib qoladi, chunki bo'shliq
-   davlat saytida qidiruvni xato natija berishiga sabab bo'lishi mumkin. */
-function formatPassportForDisplay(clean){
-  const m = clean.match(/^([A-Z]{1,3})(\d{5,9})$/);
-  return m ? `${m[1]} ${m[2]}` : clean;
 }
 /* ---- Rasmni OCR'dan OLDIN "tozalash" — rang muammosini (pushti, sariq,
    har qanday yorug'lik nurlanishi) BUTUNLAY yo'q qiladi (kulrang qilib),
@@ -2695,11 +2717,10 @@ function canvasToBlob(canvas){
 async function runVizaOcr(file){
   const statusEl = document.getElementById("ocrStatus");
   const barcodeInput = document.getElementById("vizaBarcode");
-  const passportInput = document.getElementById("vizaPassport");
-  if(!statusEl || !barcodeInput || !passportInput) return;
+  if(!statusEl || !barcodeInput) return;
   if(typeof Tesseract === "undefined"){
     // Tesseract yuklanmagan (masalan tarmoq bloklagan) — jim o'tamiz,
-    // mijoz maydonlarni qo'lda to'ldirishi ham mumkin.
+    // mijoz maydonni qo'lda to'ldirishi ham mumkin.
     return;
   }
   statusEl.style.display = "block";
@@ -2715,30 +2736,30 @@ async function runVizaOcr(file){
         const blob = await canvasToBlob(canvas);
         const { data } = await worker.recognize(blob || file);
         return extractVisaFields(data.text);
-      }catch(_){ return { barcode:"", passport:"" }; }
+      }catch(_){ return { barcode:"" }; }
     }
 
-    // TEZLIK: ikkita usulni BIR VAQTNING O'ZIDA (parallel, 2 alohida
-    // "ishchi" bilan) sinaymiz — biri kontrastli, biri ko'k siyoh
-    // (masalan qo'lda chizilgan doira) ta'sirini kamaytiruvchi versiya.
-    // Bittasi barkodni, ikkinchisi pasportni topishi ham mumkin — ikkalasi
-    // birlashtiriladi. Bu ketma-ket ishlashdan TAXMINAN 2 BARAVAR tezroq.
+    // TEZLIK VA ANIQLIK: ikkita usulni BIR VAQTNING O'ZIDA (parallel, 2
+    // alohida "ishchi" bilan) sinaymiz — biri kontrastli, biri ko'k siyoh
+    // (masalan mijoz qo'lda chizgan doira) ta'sirini kamaytiruvchi versiya
+    // — chunki barkod atrofiga ham ko'pincha shunday belgi qo'yiladi.
+    // Ikkalasidan ENG ISHONCHLISI tanlanadi. Bu ketma-ket ishlashdan
+    // TAXMINAN 2 BARAVAR tezroq.
     const [resA, resB] = await Promise.all([
       tryMode(getOcrWorkerA(), "contrast"),
       tryMode(getOcrWorkerB(), "redchannel")
     ]);
     let combined = mergeVisaFields(resA, resB);
 
-    // Faqat ikkalasi ham biror narsani to'liq topa olmagan taqdirdagina —
-    // sekinroq, lekin kuchliroq (ingliz+rus, asl rasm) oxirgi urinish.
-    if(!combined.barcode || !combined.passport){
+    // Faqat ikkalasi ham hech narsa topa olmagan taqdirdagina — sekinroq,
+    // lekin kuchliroq (ingliz+rus, asl rasm) oxirgi urinish.
+    if(!combined.barcode){
       const resC = await tryMode(getOcrWorkerFull(), "raw");
       combined = mergeVisaFields(combined, resC);
     }
 
     let foundAny = false;
     if(combined.barcode && !barcodeInput.value){ barcodeInput.value = combined.barcode; foundAny = true; }
-    if(combined.passport && !passportInput.value){ passportInput.value = combined.passport; foundAny = true; }
     statusEl.className = "ocr-status " + (foundAny ? "ok" : "empty");
     statusEl.textContent = foundAny ? t('ocrFound') : t('ocrNotFound');
   }catch(e){
@@ -2755,12 +2776,7 @@ function bindVizaForm(){
   // bo'lib boshlanadi — OCR esa qisqa fursat kutib, undan keyin ishga
   // tushadi (mijoz buni sezmaydi, chunki OCR baribir bir necha soniya davom etadi).
   const up = wireDropzone("viza", (file)=> setTimeout(()=> runVizaOcr(file), 700));
-  const phone = document.getElementById("vizaPhone");
-  phone.value = "+7 ";
-  phone.addEventListener("input", ()=>{ phone.value = formatRuPhone(phone.value); });
-  phone.addEventListener("focus", ()=>{
-    setTimeout(()=> phone.setSelectionRange(phone.value.length, phone.value.length), 0);
-  });
+  wirePhoneInput("viza");
 
   const btn = document.getElementById("vizaSubmit");
   const status = document.getElementById("vizaStatus");
@@ -2768,8 +2784,7 @@ function bindVizaForm(){
 
   btn.addEventListener("click", async ()=>{
     if(busy) return;
-    const digits = phone.value.replace(/\D/g,"");
-    const phoneOk = digits.length === 11 && digits.startsWith("7");
+    const phoneOk = isPhoneValid("viza");
     const hasFile = !!up.file;
     document.getElementById("vizaPhoneErr").style.display = phoneOk ? "none" : "block";
     document.getElementById("vizaFileErr").style.display = hasFile ? "none" : "block";
@@ -2785,23 +2800,18 @@ function bindVizaForm(){
       // Rasm allaqachon fayl tanlangan zahoti yuklana boshlagan — odatda bu yerda
       // darhol tayyor turadi (yashil ✓). Agar hali tugamagan bo'lsa, shu yerda kutamiz.
       const url = await up.resolve();
-      const phoneVal = phone.value.trim();
+      const phoneVal = getPhoneValue("viza").full;
       const id = Date.now();
-      // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) raqamlar —
+      // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) barkod —
       // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
-      // Saytda va bazada TOZA (bo'shliqsiz) shaklda saqlanadi, Telegramga esa
-      // o'qish oson bo'lishi uchun seriya va raqam orasida bo'shliq bilan
-      // ("A 1234567") yuboriladi.
       const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
-      const passportVal = (document.getElementById("vizaPassport")?.value || "").trim().toUpperCase().replace(/\s+/g,"");
-      const passportForTelegram = formatPassportForDisplay(passportVal);
 
       // Ma'lumotlar bazasiga saqlash (asosiy, majburiy) va Telegramga bildirishnoma
       // (rasm baytlari to'g'ridan-to'g'ri, havola orqali emas) bir vaqtda ketadi —
       // shu tufayli "birinchisi yo'qoladi" degan poyga holati endi bo'lmaydi.
       const [visaResult, notified] = await Promise.all([
-        addVisa(phoneVal, url, id, { barcode: barcodeVal, passport: passportVal }),
-        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal, passport: passportForTelegram })
+        addVisa(phoneVal, url, id, { barcode: barcodeVal }),
+        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal })
       ]);
 
       if(!visaResult.saved){
