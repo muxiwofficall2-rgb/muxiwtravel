@@ -194,16 +194,6 @@
     font-size:15px;cursor:pointer;padding:2px 4px;line-height:1;
   }
 
-  .client-counter{
-    display:flex;flex-direction:column;align-items:center;gap:2px;
-    margin:0 0 18px;text-align:center;animation:fadeUp .45s ease;
-  }
-  .client-counter-num{
-    font-size:34px;font-weight:800;color:var(--accent-red);
-    line-height:1.1;letter-spacing:-.01em;font-variant-numeric:tabular-nums;
-  }
-  .client-counter-label{font-size:12.5px;font-weight:700;color:var(--text-dim);text-transform:uppercase;letter-spacing:.03em;}
-
   .currency-widget{
     margin:0 0 18px;padding:14px 16px;border-radius:16px;
     background:var(--glass);border:1px solid var(--glass-border);
@@ -845,7 +835,6 @@ const T = {
     currencyCalcBtn:"Kalkulyator",
     installBtn:"O'rnatish", installTextAndroid:"Saytni ilova sifatida telefon ekraningizga o'rnating — tezroq ochiladi.",
     installTextIOS:"Ilova sifatida qo'shish: pastdagi ulashish (⬆️) tugmasini bosing, so'ng \"Bosh ekranga qo'shish\"ni tanlang.",
-    clientCounterLabel:"mijozga xizmat ko'rsatdik",
     roundTripQuestion:"Qaytish chiptasini ham xohlaysizmi?",
     oneWayBtn:"Yo'q, faqat borish", roundTripBtn:"Ha, borib-kelish",
     returnDateTitle:"Qaytish sanasini tanlang",
@@ -950,7 +939,6 @@ const T = {
     currencyCalcBtn:"Калькулятор",
     installBtn:"Установить", installTextAndroid:"Установите сайт как приложение на экран телефона — будет открываться быстрее.",
     installTextIOS:"Чтобы добавить как приложение: нажмите кнопку \"Поделиться\" (⬆️) внизу, затем выберите \"На экран «Домой»\".",
-    clientCounterLabel:"клиентам оказали услуги",
     roundTripQuestion:"Хотите также обратный билет?",
     oneWayBtn:"Нет, только в одну сторону", roundTripBtn:"Да, туда и обратно",
     returnDateTitle:"Выберите дату обратного рейса",
@@ -1055,7 +1043,6 @@ const T = {
     currencyCalcBtn:"Kalkulýator",
     installBtn:"Ornaşdyrmak", installTextAndroid:"Sahypany programma hökmünde telefon ekranyňyza ornaşdyryň — çalt açylar.",
     installTextIOS:"Programma hökmünde goşmak: aşakdaky paýlaşmak (⬆️) düwmesine basyň, soň \"Baş ekrana goşmak\"y saýlaň.",
-    clientCounterLabel:"müşderä hyzmat etdik",
     roundTripQuestion:"Yzyna bilet hem isleýärsiňizmi?",
     oneWayBtn:"Ýok, diňe gitmek", roundTripBtn:"Hawa, gidip-gaýtmak",
     returnDateTitle:"Yzyna gaýtmak senesini saýlaň",
@@ -1248,42 +1235,6 @@ function renderHoursBadge(){
   const open = isOfficeOpenNow();
   el.className = "hours-badge " + (open ? "open" : "closed");
   el.innerHTML = `<span class="hours-dot"></span>${open ? esc(t('openNow')) : esc(t('closedNow'))} · 09:00–19:00`;
-}
-
-/* ---- "Bizning muvaffaqiyatimiz" — jonli, HAQIQIY mijozlar hisoblagichi.
-   Bu raqam o'ylab topilmaydi: admin panelda bir marta boshlang'ich son
-   (masalan hozirgi +1000) kiritiladi, shundan keyin son har doim
-   AVTOMATIK — bazadagi haqiqiy so'rovlar soniga (hozircha viza so'rovlari,
-   keyinchalik chipta so'rovlari ham qo'shiladi) qarab o'sib boradi. */
-async function fetchClientCounterBase(){
-  const v = await kvGet("client_counter_base", 0);
-  const n = parseInt(v, 10);
-  return isNaN(n) ? 0 : n;
-}
-function animateCounterTo(el, target){
-  const start = 0;
-  const duration = 900;
-  const startTime = performance.now();
-  function step(now){
-    const p = Math.min(1, (now - startTime) / duration);
-    const eased = 1 - Math.pow(1 - p, 3);
-    el.textContent = Math.round(start + (target - start) * eased).toLocaleString();
-    if(p < 1) requestAnimationFrame(step);
-    else el.textContent = target.toLocaleString();
-  }
-  requestAnimationFrame(step);
-}
-async function updateClientCounter(){
-  const wrap = document.getElementById("clientCounter");
-  const numEl = document.getElementById("clientCounterNum");
-  if(!wrap || !numEl) return;
-  try{
-    const [base, visaList] = await Promise.all([fetchClientCounterBase(), fetchVisa()]);
-    const total = base + visaList.length;
-    if(total <= 0){ wrap.style.display = "none"; return; }
-    wrap.style.display = "flex";
-    animateCounterTo(numEl, total);
-  }catch(e){ /* jim o'tkazamiz — hisoblagich shunchaki ko'rinmay qoladi */ }
 }
 
 /* ---- Valyuta kurslari — 1 USD ga nisbatan, jonli va bepul (kalitsiz)
@@ -1712,10 +1663,6 @@ function homeScreen(){
         <div class="logo-circle" id="logoTap">
           <img src="${LOGO_SRC}" alt="Omad Tour" onerror="this.style.display='none';this.parentNode.innerHTML='<span style=&quot;font-weight:800;font-size:13px;color:#0c1c4d;text-align:center&quot;>OMAD<br>TOUR</span>'">
         </div>
-      </div>
-      <div class="client-counter" id="clientCounter" style="display:none">
-        <span class="client-counter-num" id="clientCounterNum">0</span>
-        <span class="client-counter-label">${esc(t('clientCounterLabel'))}</span>
       </div>
       ${isInAppBrowser() ? `<div class="inapp-warning">
         <span>${esc(t('inAppWarning'))}</span>
@@ -2159,17 +2106,6 @@ function adminScreen(){
     <h2 class="title">Admin panel</h2>
     <div class="section-text">Ulashilgan xotira faol. Bu yerda qo'shilgan yangiliklar barcha qurilmalarda ko'rinadi.</div>
 
-    <h2 class="title" style="margin-top:6px">📊 Mijozlar hisoblagichi</h2>
-    <div class="section-text">
-      Bosh sahifada ko'rinadigan "N+ mijozga xizmat ko'rsatdik" raqami.
-      Bu yerga hozirgi haqiqiy sonni (masalan 1000) bir marta kiriting —
-      shundan keyin sayt buni o'zi, saytdagi haqiqiy so'rovlar soniga
-      qarab avtomatik oshirib boradi (o'zingiz qayta kiritishga hojat yo'q).
-    </div>
-    <input type="text" inputmode="numeric" id="counterBaseInput" placeholder="Masalan: 1000">
-    <button class="primary-btn" id="counterBaseSave">Saqlash</button>
-    <div class="footer-note" id="counterBaseStatus" style="min-height:18px"></div>
-
     <h2 class="title" style="margin-top:6px"><span class="inline-icon">${ICONS.megaphone}</span> Yangiliklar</h2>
     <textarea id="newsInput" placeholder="Yangi xabar matni..."></textarea>
     <div class="field-label">Rasm (ixtiyoriy)</div>
@@ -2268,8 +2204,6 @@ function bindHome(){
   renderHoursBadge();
   clearInterval(window.__hoursInterval);
   window.__hoursInterval = setInterval(renderHoursBadge, 60000);
-
-  updateClientCounter();
 
   Promise.all([fetchNews(), fetchVisa()]).then(([news, visa])=>{
     store.set("omad_news_count", String(news.length));
@@ -2494,17 +2428,37 @@ function wireDropzone(prefix, onFileSelected){
    raqamini mijozning telefonida, bepul o'qib olish (Tesseract.js).
    Bu hech qanday serverga yoki davlat saytiga ulanmaydi — faqat mijoz
    o'zi yuborgan rasmni "o'qiydi", shu bilan admin raqamlarni suratdan
-   qo'lda o'qib yozishga vaqt sarflamaydi. ================== */
-let ocrWorkerPromise = null;
-function getOcrWorker(){
-  if(!ocrWorkerPromise){
+   qo'lda o'qib yozishga vaqt sarflamaydi.
+
+   TEZLIK UCHUN: 2 ta alohida "ishchi" (worker) PARALEL ishlaydi — biri
+   kontrastli, biri ko'k siyoh (masalan qo'lda chizilgan doira) ta'sirini
+   kamaytiruvchi versiyani bir vaqtning o'zida o'qiydi. Bu ikkalasi ham
+   faqat inglizcha (tez), chunki blankadagi raqam/harflar lotin yozuvida.
+   Faqat ikkalasi ham hech narsa topolmasa — uchinchi, sekinroq lekin
+   kuchliroq (ingliz+rus) urinish ishga tushadi. ================== */
+let ocrWorkerA = null, ocrWorkerB = null, ocrWorkerFull = null;
+function getOcrWorkerA(){
+  if(!ocrWorkerA){
     if(typeof Tesseract === "undefined") return Promise.reject(new Error("no tesseract"));
-    // Ikki til birga — rus (anketadagi "Номер паспорта" kabi yozuvlarni
-    // to'g'ri o'qish uchun) va ingliz (raqam/lotin harflarini aniqroq
-    // o'qish uchun, chunki bu belgilar inglizcha modelda yaxshiroq tanilar).
-    ocrWorkerPromise = Tesseract.createWorker(["eng","rus"]);
+    ocrWorkerA = Tesseract.createWorker("eng");
   }
-  return ocrWorkerPromise;
+  return ocrWorkerA;
+}
+function getOcrWorkerB(){
+  if(!ocrWorkerB){
+    if(typeof Tesseract === "undefined") return Promise.reject(new Error("no tesseract"));
+    ocrWorkerB = Tesseract.createWorker("eng");
+  }
+  return ocrWorkerB;
+}
+function getOcrWorkerFull(){
+  if(!ocrWorkerFull){
+    if(typeof Tesseract === "undefined") return Promise.reject(new Error("no tesseract"));
+    // Rus tili faqat oxirgi, kamdan-kam ishlatiladigan chora sifatida —
+    // shu bilan oddiy holatlarda tezlikni pasaytirmaydi.
+    ocrWorkerFull = Tesseract.createWorker(["eng","rus"]);
+  }
+  return ocrWorkerFull;
 }
 
 /* Formatni "taxmin qilish" o'rniga — anketadagi yozuvning (label) o'zini
@@ -2542,7 +2496,7 @@ function findValueNearLabel(lines, labelPatterns, valuePattern, excludeValue, sk
     // qidiramiz (jadval ko'rinishidagi anketalarda qiymat yorliqdan
     // bir necha qator pastda joylashgan bo'lishi mumkin).
     const candidates = [line];
-    for(let j = i+1; j <= Math.min(i+5, lines.length-1); j++){
+    for(let j = i+1; j <= Math.min(i+20, lines.length-1); j++){
       if(!skipSet || !skipSet.has(j)) candidates.push(lines[j]);
     }
     for(const cand of candidates){
@@ -2572,16 +2526,35 @@ function extractVisaFields(rawText){
   const safeLines = lines.filter((_, i) => !receiptZone.has(i));
   const safeText = safeLines.join("\n");
 
+  // MUHIM QO'SHIMCHA HIMOYA: to'lov cheki OCR tomonidan juda chalkash
+  // o'qilib, "СУММА"/"RRN" kabi so'zlarning o'zi tanib bo'lmas holga kelib
+  // qolishi mumkin — shunda yuqoridagi so'z-asosli himoya ishlamay qoladi.
+  // Shuning uchun QO'SHIMCHA, SO'ZGA BOG'LIQ BO'LMAGAN himoya qo'shamiz:
+  // "PASPORT" yozuvi (u deyarli har doim to'g'ri o'qiladi, chunki lotin
+  // harflari bilan yozilgan) qayerda uchrashini topamiz — chek DOIM shu
+  // yozuvdan OLDIN keladi, shuning uchun undan oldingi hamma narsani
+  // (chek qanchalik chalkash o'qilgan bo'lmasin) butunlay chetlab o'tamiz.
+  const passportLabelIdx = lines.findIndex(l => ["ПАСПОРТ","PASSPORT","PASPORT"].some(p => l.includes(p)));
+  const afterLabelText = passportLabelIdx >= 0
+    ? lines.filter((_, i) => i >= passportLabelIdx && !receiptZone.has(i)).join("\n")
+    : safeText;
+
   // 1) Ariza raqami (barkod) — "ЗАЯВКИ" / "БАРКОД" / "BARCODE" yozuvi
-  //    atrofidan uzun raqam ketma-ketligini qidiramiz.
+  //    atrofidan uzun raqam ketma-ketligini qidiramiz. `Tier` — topilgan
+  //    natijaning ISHONCHLILIK DARAJASI (0=eng ishonchli, aniq yorliq
+  //    yonidan topilgan; kattaroq raqam — kamroq ishonchli, taxminiyroq
+  //    zaxira usuli). Bir nechta OCR urinishini birlashtirganda, ENG
+  //    ISHONCHLI (eng kichik tier) natija g'olib chiqadi — shunchaki
+  //    "birinchi topilgan" emas.
   let barcode = findValueNearLabel(lines, ["ЗАЯВКИ","БАРКОД","BARCODE","ARIZA"], /\d{10,16}/g, null, receiptZone);
+  let barcodeTier = barcode ? 0 : 99;
   if(!barcode){
     // Zaxira: chekka tegishli bo'lmagan qatorlardan eng UZUN raqam
     // ketma-ketligini olamiz. Anketa barkodi deyarli har doim varaqning
     // ENG PASTIDA (oxirida) bo'ladi, chek esa yuqorida — shuning uchun
     // OXIRGI (eng pastdagi) mosligni tanlaymiz, birinchisini emas.
     const matches = safeText.match(/\b\d{10,16}\b/g) || [];
-    if(matches.length) barcode = matches[matches.length - 1];
+    if(matches.length){ barcode = matches[matches.length - 1]; barcodeTier = 1; }
   }
 
   // 2) Pasport raqami — "ПАСПОРТ" / "PASSPORT" yozuvi atrofidan, FORMATIDAN
@@ -2591,23 +2564,41 @@ function extractVisaFields(rawText){
   let passport = findValueNearLabel(
     lines, ["ПАСПОРТ","PASSPORT","PASPORT"], /[A-Z]{0,3}[\s-]?\d{6,9}\b/g, barcode, receiptZone
   );
+  let passportTier = passport ? 0 : 99;
   if(!passport){
-    // Zaxira 1: harf+raqam formatini chekka tegishli bo'lmagan qatorlardan
-    // qidiramiz (1-3 harf + 6-9 raqam — O'zbekiston, Turkmaniston va boshqa
-    // ko'plab davlat pasportlarini qamrab oladi).
-    const m = safeText.match(/\b[A-Z]{1,3}[\s-]?\d{6,9}\b/);
-    if(m) passport = m[0].replace(/[\s-]/g,"");
+    // Zaxira 1: harf+raqam formatini "Pasport" yorlig'idan KEYINGI matndan
+    // qidiramiz (0-3 harf + 6-9 raqam — O'zbekiston, Turkmaniston va boshqa
+    // ko'plab davlat pasportlarini, harfsiz pasportlarni ham qamrab oladi).
+    // Shu tufayli hujjat yuqorisidagi chek matni (qanchalik chalkash
+    // o'qilgan bo'lmasin) hech qachon pasport deb noto'g'ri qabul qilinmaydi.
+    const m = afterLabelText.match(/\b[A-Z]{0,3}[\s-]?\d{6,9}\b/);
+    if(m){ passport = m[0].replace(/[\s-]/g,""); passportTier = 1; }
   }
   if(!passport){
     // Zaxira 2: harf va raqam aralash bo'lgan, barkoddan farqli, 7-10 belgili
-    // istalgan ketma-ketlikni olamiz — bu eng keng, so'nggi imkoniyat.
-    const candidates = safeText.match(/\b[A-Z0-9]{7,10}\b/g) || [];
+    // istalgan ketma-ketlikni olamiz — bu eng keng, ENG KAM ishonchli,
+    // so'nggi imkoniyat (shuning uchun eng past ustuvorlikka ega).
+    const candidates = afterLabelText.match(/\b[A-Z0-9]{7,10}\b/g) || [];
     for(const c of candidates){
-      if(/[A-Z]/.test(c) && /\d/.test(c) && c !== barcode){ passport = c; break; }
+      if(/[A-Z]/.test(c) && /\d/.test(c) && c !== barcode){ passport = c; passportTier = 2; break; }
     }
   }
 
-  return { barcode, passport: passport.replace(/[\s-]/g,"") };
+  return { barcode, barcodeTier, passport: passport.replace(/[\s-]/g,""), passportTier };
+}
+/* Bir nechta OCR urinishidan (masalan turli "tozalash" usullaridan) kelgan
+   natijalarni birlashtiradi — shunchaki "birinchi topilgan g'olib" emas,
+   balki ENG ISHONCHLI (eng kichik tier raqamiga ega) natija g'olib chiqadi. */
+function mergeVisaFields(a, b){
+  function pick(valA, tierA, valB, tierB){
+    if(!valA) return valB || "";
+    if(!valB) return valA || "";
+    return (tierA <= tierB) ? valA : valB;
+  }
+  return {
+    barcode: pick(a && a.barcode, (a && a.barcodeTier) ?? 99, b && b.barcode, (b && b.barcodeTier) ?? 99),
+    passport: pick(a && a.passport, (a && a.passportTier) ?? 99, b && b.passport, (b && b.passportTier) ?? 99)
+  };
 }
 /* Ekranda o'qish uchun — pasport seriyasi (harflar) bilan raqamini
    bo'shliq bilan ajratib ko'rsatamiz (masalan "A 2884775"), shunda mijoz
@@ -2639,6 +2630,32 @@ function makeOcrVariant(img, mode){
   const imgData = ctx.getImageData(0, 0, w, h);
   const d = imgData.data;
   const n = w * h;
+
+  if(mode === "redchannel"){
+    // Ko'k siyoh (mijozlar ko'pincha ko'k ruchka bilan pasport/barkod
+    // raqamini DOIRAGA olib belgilaydi) — QIZIL kanalning o'zida deyarli
+    // ko'rinmay qoladi, chunki ko'k siyoh qizil nurni qaytaradi. Qora
+    // bosma matn esa barcha kanallarda bab-baravar qorong'i bo'lgani
+    // uchun aniq qolaveradi. Shu tufayli doira chizig'i matnni
+    // "kesib" yubormaydi.
+    const red = new Float32Array(n);
+    let min = 255, max = 0;
+    for(let i = 0, p = 0; i < d.length; i += 4, p++){
+      const v = d[i];
+      red[p] = v;
+      if(v < min) min = v;
+      if(v > max) max = v;
+    }
+    const range = Math.max(1, max - min);
+    for(let i = 0, p = 0; i < d.length; i += 4, p++){
+      let v = ((red[p]-min)/range) * 255;
+      v = Math.min(255, Math.max(0, (v-128)*1.6 + 128));
+      d[i] = d[i+1] = d[i+2] = v;
+    }
+    ctx.putImageData(imgData, 0, 0);
+    return canvas;
+  }
+
   const gray = new Float32Array(n);
   let min = 255, max = 0;
   for(let i = 0, p = 0; i < d.length; i += 4, p++){
@@ -2690,25 +2707,33 @@ async function runVizaOcr(file){
   statusEl.textContent = t('ocrWorking');
   try{
     const img = await loadImage(file);
-    const worker = await getOcrWorker();
 
-    // Bir necha "tozalash" usulini ketma-ket sinaymiz. Birinchisi (kontrastli
-    // kulrang) yetarli natija bersa — tezda to'xtaymiz. Aks holda asl rasmni,
-    // so'ng eng kuchli (qora-oq) usulni ham sinab ko'ramiz. Turli
-    // urinishlardan topilgan maydonlarni birlashtiramiz (masalan barkod
-    // 1-urinishda, pasport 3-urinishda topilishi ham mumkin).
-    const combined = { barcode:"", passport:"" };
-    const modes = ["contrast", "raw", "threshold"];
-    for(const mode of modes){
-      if(combined.barcode && combined.passport) break;
+    async function tryMode(workerPromise, mode){
       try{
+        const worker = await workerPromise;
         const canvas = makeOcrVariant(img, mode);
         const blob = await canvasToBlob(canvas);
         const { data } = await worker.recognize(blob || file);
-        const fields = extractVisaFields(data.text);
-        if(fields.barcode && !combined.barcode) combined.barcode = fields.barcode;
-        if(fields.passport && !combined.passport) combined.passport = fields.passport;
-      }catch(_){ /* shu usul ishlamasa, keyingisini sinaymiz */ }
+        return extractVisaFields(data.text);
+      }catch(_){ return { barcode:"", passport:"" }; }
+    }
+
+    // TEZLIK: ikkita usulni BIR VAQTNING O'ZIDA (parallel, 2 alohida
+    // "ishchi" bilan) sinaymiz — biri kontrastli, biri ko'k siyoh
+    // (masalan qo'lda chizilgan doira) ta'sirini kamaytiruvchi versiya.
+    // Bittasi barkodni, ikkinchisi pasportni topishi ham mumkin — ikkalasi
+    // birlashtiriladi. Bu ketma-ket ishlashdan TAXMINAN 2 BARAVAR tezroq.
+    const [resA, resB] = await Promise.all([
+      tryMode(getOcrWorkerA(), "contrast"),
+      tryMode(getOcrWorkerB(), "redchannel")
+    ]);
+    let combined = mergeVisaFields(resA, resB);
+
+    // Faqat ikkalasi ham biror narsani to'liq topa olmagan taqdirdagina —
+    // sekinroq, lekin kuchliroq (ingliz+rus, asl rasm) oxirgi urinish.
+    if(!combined.barcode || !combined.passport){
+      const resC = await tryMode(getOcrWorkerFull(), "raw");
+      combined = mergeVisaFields(combined, resC);
     }
 
     let foundAny = false;
@@ -2886,28 +2911,6 @@ function showStory(item){
 
 function bindAdmin(){
   const up = wireDropzone("news");
-
-  // Mijozlar hisoblagichi — joriy saqlangan qiymatni ko'rsatamiz va
-  // yangi qiymat kiritilganda saqlaymiz.
-  fetchClientCounterBase().then(v=>{
-    const inp = document.getElementById("counterBaseInput");
-    if(inp && v) inp.value = v;
-  });
-  document.getElementById("counterBaseSave")?.addEventListener("click", async ()=>{
-    const inp = document.getElementById("counterBaseInput");
-    const status = document.getElementById("counterBaseStatus");
-    const n = parseInt((inp.value || "").replace(/\D/g,""), 10);
-    if(isNaN(n) || n < 0){
-      status.className = "footer-note err";
-      status.textContent = "Iltimos, to'g'ri son kiriting.";
-      return;
-    }
-    status.className = "footer-note";
-    status.textContent = "Saqlanmoqda…";
-    const r = await kvSet("client_counter_base", n);
-    status.className = "footer-note " + (r.ok ? "ok" : "err");
-    status.textContent = r.ok ? "Saqlandi ✓" : "Xatolik: " + r.detail;
-  });
 
   function renderList(){
     fetchNews().then(list=>{
