@@ -367,10 +367,10 @@
     font-family:inherit;
   }
   .phone-country-list{
-    position:absolute;top:calc(100% + 6px);left:0;z-index:20;
+    position:absolute;bottom:calc(100% + 6px);left:0;z-index:20;
     display:flex;flex-direction:column;width:100%;max-width:280px;
     background:var(--bg-2);border:1px solid var(--glass-border);border-radius:14px;
-    box-shadow:0 8px 24px rgba(0,0,0,.25);overflow:hidden;
+    box-shadow:0 -8px 24px rgba(0,0,0,.25);overflow:hidden;
   }
   .phone-country-opt{
     display:flex;align-items:center;gap:8px;padding:12px 14px;
@@ -1906,26 +1906,28 @@ function vizaScreen(){
 
 /* Telegram uslubidagi telefon kiritish — davlat bayrog'i va kodi (masalan
    🇷🇺 +7) tugma orqali tanlanadi, mijoz esa faqat qolgan raqamlarni
-   kiritadi. UZ/RU/TM davlatlari qo'llab-quvvatlanadi. */
+   kiritadi. UZ/RU/TM davlatlari qo'llab-quvvatlanadi. Har bir davlat uchun
+   ANIQ raqam uzunligi belgilangan — na ortiqcha, na kam raqam kiritilmaydi:
+   Rossiya (+7) — 10 ta, O'zbekiston (+998) — 9 ta, Turkmaniston (+993) — 8 ta. */
 const PHONE_COUNTRIES = [
-  { code:"+998", flag:"🇺🇿", name:"O'zbekiston" },
-  { code:"+7",   flag:"🇷🇺", name:"Rossiya" },
-  { code:"+993", flag:"🇹🇲", name:"Türkmenistan" }
+  { code:"+998", flag:"🇺🇿", name:"O'zbekiston", digits:9 },
+  { code:"+7",   flag:"🇷🇺", name:"Rossiya", digits:10 },
+  { code:"+993", flag:"🇹🇲", name:"Türkmenistan", digits:8 }
 ];
 function phoneInput(prefix){
   return `<div class="phone-input-wrap">
+    <div class="phone-country-list" id="${prefix}CountryList" style="display:none">
+      ${PHONE_COUNTRIES.map(c => `<button type="button" class="phone-country-opt" data-code="${c.code}" data-flag="${c.flag}" data-digits="${c.digits}">
+        <span class="phone-flag">${c.flag}</span> ${esc(c.name)} <span class="phone-country-code">${c.code}</span>
+      </button>`).join("")}
+    </div>
     <div class="phone-input-row">
-      <button type="button" class="phone-country-btn" id="${prefix}CountryBtn">
+      <button type="button" class="phone-country-btn" id="${prefix}CountryBtn" data-digits="10">
         <span class="phone-flag" id="${prefix}Flag">🇷🇺</span>
         <span class="phone-code" id="${prefix}Code">+7</span>
         <span class="phone-caret">▾</span>
       </button>
       <input type="tel" inputmode="numeric" id="${prefix}PhoneNum" class="phone-number-input" placeholder="900 123 45 67">
-    </div>
-    <div class="phone-country-list" id="${prefix}CountryList" style="display:none">
-      ${PHONE_COUNTRIES.map(c => `<button type="button" class="phone-country-opt" data-code="${c.code}" data-flag="${c.flag}">
-        <span class="phone-flag">${c.flag}</span> ${esc(c.name)} <span class="phone-country-code">${c.code}</span>
-      </button>`).join("")}
     </div>
   </div>`;
 }
@@ -1937,6 +1939,12 @@ function wirePhoneInput(prefix){
   const num = document.getElementById(prefix + "PhoneNum");
   if(!btn || !list || !num) return;
 
+  function maxDigits(){ return parseInt(btn.dataset.digits, 10) || 15; }
+  function clampNum(){
+    const digits = num.value.replace(/\D/g,"").slice(0, maxDigits());
+    num.value = digits;
+  }
+
   btn.addEventListener("click", (e)=>{
     e.stopPropagation();
     list.style.display = (list.style.display === "none" || !list.style.display) ? "flex" : "none";
@@ -1945,16 +1953,16 @@ function wirePhoneInput(prefix){
     opt.addEventListener("click", ()=>{
       flag.textContent = opt.dataset.flag;
       code.textContent = opt.dataset.code;
+      btn.dataset.digits = opt.dataset.digits;
       list.style.display = "none";
+      clampNum();
       num.focus();
     });
   });
   document.addEventListener("click", (e)=>{
     if(!list.contains(e.target) && e.target !== btn && !btn.contains(e.target)) list.style.display = "none";
   });
-  num.addEventListener("input", ()=>{
-    num.value = num.value.replace(/[^\d ]/g, "");
-  });
+  num.addEventListener("input", clampNum);
 }
 function getPhoneValue(prefix){
   const code = document.getElementById(prefix + "Code")?.textContent || "";
@@ -1962,7 +1970,10 @@ function getPhoneValue(prefix){
   return { full: code + digits, digits, code };
 }
 function isPhoneValid(prefix){
-  return getPhoneValue(prefix).digits.length >= 7;
+  const btn = document.getElementById(prefix + "CountryBtn");
+  const expected = parseInt(btn?.dataset.digits, 10) || 0;
+  const { digits } = getPhoneValue(prefix);
+  return digits.length === expected;
 }
 
 function dropzone(prefix, label){
