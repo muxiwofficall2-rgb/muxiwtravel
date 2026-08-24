@@ -667,12 +667,20 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
 
-<!-- Tesseract.js — viza blankasidagi ariza raqami va pasport raqamini
-     mijozning telefonida, TO'LIQ BEPUL o'qib olish uchun. Bu — davlat
-     saytiga (visa.mfa.uz) hech qanday aloqasi yo'q, faqat mijoz yuborgan
-     rasmning o'zini "o'qiydi", shunda admin raqamlarni suratdan qo'lda
-     o'qib, qayta yozishga vaqt sarflamaydi. -->
+<!-- Tesseract.js — viza blankasidagi ariza raqamini (matn ko'rinishida)
+     mijozning telefonida, TO'LIQ BEPUL o'qib olish uchun — ZAXIRA sifatida,
+     agar shtrix-kodning o'zini dekodlash muvaffaqiyatsiz bo'lsa. Bu —
+     davlat saytiga (visa.mfa.uz) hech qanday aloqasi yo'q, faqat mijoz
+     yuborgan rasmning o'zini "o'qiydi". -->
 <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+
+<!-- ZXing — shtrix-kodning O'ZINI (chiziqlarini) to'g'ridan-to'g'ri
+     dekodlash uchun. Bu OCR (matn o'qish) emas — bu xato-tuzatish
+     (checksum) bilan ishlaydigan, ANCHA ishonchli texnologiya: agar biror
+     chiziq noaniq bo'lsa, "topilmadi" deydi, lekin hech qachon XATO
+     raqamni to'g'ri deb ko'rsatmaydi. Shuning uchun bu — birinchi va eng
+     ishonchli urinish, Tesseract esa faqat zaxira. -->
+<script src="https://cdn.jsdelivr.net/npm/@zxing/browser@latest"></script>
 
 <!-- Yandex Maps API — faqat "Marshrut" oynasi uchun: haqiqiy avtobus/metro/
      peresadka ma'lumotlarini ko'rsatish uchun ishlatiladi (Sankt-Peterburg
@@ -840,6 +848,7 @@ const T = {
     vizaAttention:"Iltimos, anketangizning aniq suratini yuboring",
     yourPhone:"Telefon raqami", uploadPhoto:"Hujjat rasmini yuklash",
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
+    yourPhoneLabel:"Telefon raqamingiz",
     photoPreparing:"Rasm tayyorlanmoqda…", photoUploading:"Rasm yuklanmoqda…",
     photoReady:"Rasm tayyor ✓", photoFailed:"Rasm yuklanmadi — bosib qayta urinib ko'ring",
     sending:"Yuborilmoqda…",
@@ -944,6 +953,7 @@ const T = {
     vizaAttention:"Пожалуйста, отправьте чёткое фото вашей анкеты",
     yourPhone:"Номер телефона", uploadPhoto:"Загрузить фото документа",
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
+    yourPhoneLabel:"Ваш номер телефона",
     photoPreparing:"Фото подготавливается…", photoUploading:"Фото загружается…",
     photoReady:"Фото готово ✓", photoFailed:"Фото не загрузилось — нажмите, чтобы повторить",
     sending:"Отправляется…",
@@ -1048,6 +1058,7 @@ const T = {
     vizaAttention:"Haýyş, anketaňyzyň anyk suratyny iberiň",
     yourPhone:"Telefon belgisi", uploadPhoto:"Resminama suratyny ýüklemek",
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
+    yourPhoneLabel:"Telefon belgiňiz",
     photoPreparing:"Surat taýýarlanýar…", photoUploading:"Surat ýüklenýär…",
     photoReady:"Surat taýýar ✓", photoFailed:"Surat ýüklenmedi — gaýtadan synanyşmak üçin basyň",
     sending:"Iberilýär…",
@@ -2004,8 +2015,7 @@ function vizaFormScreen(){
     <div class="ocr-status" id="ocrStatus" style="display:none"></div>
     <div class="field-label">${esc(t('barcodeLabel'))}</div>
     <input type="text" inputmode="numeric" id="vizaBarcode" placeholder="${esc(t('barcodePh'))}">
-    <div class="field-label" style="margin-top:14px">${esc(t('yourPhone'))}<span class="required-star">*</span></div>
-    <div class="section-text" style="margin:4px 0 8px">${esc(t('phoneHint'))}</div>
+    <div class="field-label" style="margin-top:14px">${esc(t('yourPhoneLabel'))}<span class="required-star">*</span></div>
     ${phoneInput('viza')}
     <div class="error-msg" id="vizaPhoneErr">${esc(t('phoneInvalid'))}</div>
     <button class="primary-btn" id="vizaSubmit">${esc(t('send'))}</button>
@@ -2725,18 +2735,67 @@ function canvasToBlob(canvas){
   return new Promise(resolve => canvas.toBlob(resolve, "image/png"));
 }
 
+/* ================== Shtrix-kodning O'ZINI dekodlash (ZXing) ==================
+   Bu — OCR emas: shtrix-kod (chiziqlar) ichida xato-tuzatish (checksum)
+   qurilgan, shuning uchun agar biror chiziq noaniq bo'lsa, dastur buni
+   DARHOL biladi va "topilmadi" deydi — hech qachon xato raqamni to'g'ri
+   deb ko'rsatmaydi. Shu sabab bu — birinchi va eng ishonchli urinish. */
+let zxingReader = null;
+function getZxingReader(){
+  if(!zxingReader){
+    if(typeof ZXingBrowser === "undefined") return null;
+    zxingReader = new ZXingBrowser.BrowserMultiFormatReader();
+  }
+  return zxingReader;
+}
+async function tryDecodeBarcodeGraphic(file){
+  const reader = getZxingReader();
+  if(!reader) return "";
+  const url = URL.createObjectURL(file);
+  try{
+    const result = await reader.decodeFromImageUrl(url);
+    const text = (result && typeof result.getText === "function") ? result.getText() : "";
+    // Shtrix-kod ichida ba'zan bo'sh joy/chiziqcha ham bo'lishi mumkin —
+    // bizga faqat raqamlar kerak.
+    const digits = (text || "").replace(/\D/g, "");
+    return digits.length >= 8 ? digits : "";
+  }catch(e){
+    return ""; // Shtrix topilmadi — OCR zaxira sifatida ishga tushadi.
+  }finally{
+    URL.revokeObjectURL(url);
+  }
+}
+
 async function runVizaOcr(file){
   const statusEl = document.getElementById("ocrStatus");
   const barcodeInput = document.getElementById("vizaBarcode");
   if(!statusEl || !barcodeInput) return;
-  if(typeof Tesseract === "undefined"){
-    // Tesseract yuklanmagan (masalan tarmoq bloklagan) — jim o'tamiz,
-    // mijoz maydonni qo'lda to'ldirishi ham mumkin.
-    return;
-  }
   statusEl.style.display = "block";
   statusEl.className = "ocr-status working";
   statusEl.textContent = t('ocrWorking');
+
+  // 1-QADAM (eng ishonchli): shtrix-kodning o'zini to'g'ridan-to'g'ri
+  // dekodlashga harakat qilamiz. Muvaffaqiyatli bo'lsa — bu YETARLI,
+  // sekinroq OCR jarayoniga umuman hojat qolmaydi.
+  try{
+    const scanned = await tryDecodeBarcodeGraphic(file);
+    if(scanned && !barcodeInput.value){
+      barcodeInput.value = scanned;
+      statusEl.className = "ocr-status ok";
+      statusEl.textContent = t('ocrFound');
+      return;
+    }
+  }catch(e){ /* jim o'tamiz, OCR bilan davom etamiz */ }
+
+  // 2-QADAM (zaxira): shtrix-kod dekodlanmadi (masalan surat juda xira
+  // yoki shtrix yaxshi ko'rinmagan) — matn o'qish (OCR) orqali qidiramiz.
+  if(typeof Tesseract === "undefined"){
+    // Tesseract yuklanmagan (masalan tarmoq bloklagan) — jim o'tamiz,
+    // mijoz maydonni qo'lda to'ldirishi ham mumkin.
+    statusEl.className = "ocr-status empty";
+    statusEl.textContent = t('ocrNotFound');
+    return;
+  }
   try{
     const img = await loadImage(file);
 
