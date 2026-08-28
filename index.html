@@ -194,52 +194,6 @@
     font-size:15px;cursor:pointer;padding:2px 4px;line-height:1;
   }
 
-  .currency-widget{
-    margin:0 0 18px;padding:14px 16px;border-radius:16px;
-    background:var(--glass);border:1px solid var(--glass-border);
-    backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
-    animation:fadeUp .4s ease;
-  }
-  .cur-title{font-size:12.5px;font-weight:700;color:var(--text-dim);margin-bottom:8px;text-transform:uppercase;letter-spacing:.03em;}
-  .cur-title-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
-  .cur-title-row .cur-title{margin-bottom:0;}
-  .cur-calc-toggle{
-    font-size:11.5px;font-weight:700;color:var(--accent-red);
-    background:rgba(232,53,79,.1);border:1px solid rgba(232,53,79,.3);
-    border-radius:10px;padding:5px 10px;cursor:pointer;font-family:inherit;
-  }
-  .cur-list{display:flex;flex-direction:column;gap:7px;}
-  .cur-row{display:flex;align-items:center;gap:8px;font-size:15px;}
-  .cur-code{font-weight:800;width:44px;flex-shrink:0;color:var(--text);}
-  .cur-val{flex:1;font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
-  .cur-trend{width:16px;text-align:center;font-size:12px;flex-shrink:0;}
-  .cur-trend.up{color:#22c076;}
-  .cur-trend.down{color:var(--accent-red);}
-  .cur-trend.flat{color:var(--text-dim);}
-  .cur-calc{
-    max-height:0;overflow:hidden;opacity:0;
-    transition:max-height .25s ease,opacity .2s ease,margin .25s ease;
-  }
-  .cur-calc.open{max-height:220px;opacity:1;margin-top:12px;}
-  .cur-calc-row{display:flex;gap:8px;}
-  .cur-calc-input{
-    flex:1;min-width:0;background:var(--surface);border:1px solid var(--glass-border);
-    border-radius:10px;color:var(--text);padding:10px 12px;font-size:15px;font-weight:700;
-    font-family:inherit;
-  }
-  .cur-calc-select{
-    background:var(--surface);border:1px solid var(--glass-border);
-    border-radius:10px;color:var(--text);padding:10px 10px;font-size:13px;font-weight:700;
-    font-family:inherit;
-  }
-  .cur-calc-results{display:flex;flex-direction:column;gap:6px;margin-top:10px;}
-  .cur-calc-result-row{
-    display:flex;justify-content:space-between;align-items:center;
-    background:var(--surface-hover);border-radius:8px;padding:8px 10px;font-size:13.5px;
-  }
-  .cur-calc-result-code{font-weight:800;color:var(--text-dim);}
-  .cur-calc-result-val{font-weight:700;color:var(--text);font-variant-numeric:tabular-nums;}
-  .cur-note{margin-top:10px;font-size:11px;line-height:1.4;color:var(--text-dim);}
   .logo-circle{
     width:132px;height:132px;border-radius:50%;overflow:hidden;
     border:3px solid rgba(232,53,79,.5);
@@ -563,6 +517,31 @@
     border:1px solid var(--glass-border);
   }
 
+  .steps-row{
+    display:flex;align-items:flex-start;justify-content:space-between;
+    margin:0 0 14px;gap:2px;
+  }
+  .step{display:flex;flex-direction:column;align-items:center;gap:5px;flex-shrink:0;width:74px;}
+  .step-dot{
+    width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:800;
+    background:var(--surface-hover);color:var(--text-dim);
+    border:1.5px solid var(--glass-border);
+  }
+  .step.done .step-dot{background:#22c076;color:#fff;border-color:#22c076;}
+  .step.active .step-dot{
+    background:var(--accent-red);color:#fff;border-color:var(--accent-red);
+    animation:stepPulse 1.8s ease-in-out infinite;
+  }
+  @keyframes stepPulse{0%,100%{box-shadow:0 0 0 0 rgba(232,53,79,.45);}50%{box-shadow:0 0 0 7px rgba(232,53,79,0);}}
+  .step-label{font-size:10.5px;font-weight:700;text-align:center;line-height:1.25;color:var(--text-dim);}
+  .step.done .step-label,.step.active .step-label{color:var(--text);}
+  .step-line{flex:1;height:2px;background:var(--glass-border);margin-top:12px;border-radius:2px;}
+  .step-line.done{background:#22c076;}
+  .status-code{
+    margin-top:8px;font-size:13px;color:var(--text-dim);
+    word-break:break-all;
+  }
   .status-card{
     border-radius:16px;padding:16px;margin-bottom:14px;font-size:14.5px;line-height:1.6;
     border:1px solid var(--glass-border);
@@ -616,10 +595,15 @@
 
   .corner-ornament{
     position:fixed;z-index:0;pointer-events:none;
-    width:260px;height:260px;color:var(--text);opacity:.05;
+    width:300px;height:300px;color:var(--text);opacity:.07;
   }
-  .corner-ornament.tl{top:-72px;left:-72px;}
-  .corner-ornament.br{bottom:-72px;right:-72px;transform:rotate(180deg);}
+  .corner-ornament.tl{top:-86px;left:-86px;}
+  .corner-ornament.br{bottom:-86px;right:-86px;transform:rotate(180deg);}
+  /* An'anaviy "girih" panjara — butun fonni juda yengil qoplaydi */
+  .girih-layer{
+    position:fixed;inset:0;z-index:0;pointer-events:none;
+    color:var(--text);opacity:.035;
+  }
 
   ::-webkit-scrollbar{width:5px;}
   ::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:10px;}
@@ -630,27 +614,40 @@
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <defs>
+    <!-- An'anaviy o'zbek/turkman naqshi: sakkiz burchakli yulduz (guli),
+         islimiy o'ralmalar va geometrik to'r — Markaziy Osiyo koshinkorligi
+         va gilam naqshlariga xos uslub. -->
     <g id="mandala">
-      <g id="petal-g">
-        <path id="petal" d="M140 140 C152 106 150 70 132 40 C106 66 100 104 112 140 Z" fill="currentColor" opacity=".85"/>
-      </g>
-      <use href="#petal" transform="rotate(30 140 140)"/>
-      <use href="#petal" transform="rotate(60 140 140)"/>
-      <use href="#petal" transform="rotate(90 140 140)"/>
-      <use href="#petal" transform="rotate(120 140 140)"/>
-      <use href="#petal" transform="rotate(150 140 140)"/>
-      <use href="#petal" transform="rotate(180 140 140)"/>
-      <use href="#petal" transform="rotate(210 140 140)"/>
-      <use href="#petal" transform="rotate(240 140 140)"/>
-      <use href="#petal" transform="rotate(270 140 140)"/>
-      <use href="#petal" transform="rotate(300 140 140)"/>
-      <use href="#petal" transform="rotate(330 140 140)"/>
-      <circle cx="140" cy="140" r="24" fill="none" stroke="currentColor" stroke-width="2"/>
-      <circle cx="140" cy="140" r="38" fill="none" stroke="currentColor" stroke-width="1.2"/>
-      <circle cx="140" cy="140" r="96" fill="none" stroke="currentColor" stroke-width="1"/>
+      <!-- Markaziy sakkiz burchakli yulduz (an'anaviy "yulduz guli") -->
+      <path d="M140 44 L163 94 L217 78 L191 128 L236 140 L191 152 L217 202 L163 186 L140 236 L117 186 L63 202 L89 152 L44 140 L89 128 L63 78 L117 94 Z"
+            fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      <path d="M140 70 L157 108 L197 96 L177 133 L211 140 L177 147 L197 184 L157 172 L140 210 L123 172 L83 184 L103 147 L69 140 L103 133 L83 96 L123 108 Z"
+            fill="currentColor" opacity=".18"/>
+      <!-- Ichki gul (chorgul) -->
+      <path d="M140 112 C152 122 152 158 140 168 C128 158 128 122 140 112 Z" fill="currentColor" opacity=".5"/>
+      <path d="M112 140 C122 128 158 128 168 140 C158 152 122 152 112 140 Z" fill="currentColor" opacity=".5"/>
+      <circle cx="140" cy="140" r="9" fill="currentColor" opacity=".7"/>
+      <!-- Islimiy (o'simliksimon) o'ralmalar — burchaklarda -->
+      <path d="M44 44 C74 50 92 68 98 98" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M236 44 C206 50 188 68 182 98" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M44 236 C74 230 92 212 98 182" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <path d="M236 236 C206 230 188 212 182 182" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/>
+      <!-- Tashqi doiraviy hoshiya -->
+      <circle cx="140" cy="140" r="122" fill="none" stroke="currentColor" stroke-width="1.1"/>
+      <circle cx="140" cy="140" r="112" fill="none" stroke="currentColor" stroke-width="0.7" stroke-dasharray="5 7"/>
     </g>
+    <!-- Takrorlanuvchi geometrik to'r — an'anaviy "girih" panjara uslubida -->
+    <pattern id="girih" width="72" height="72" patternUnits="userSpaceOnUse">
+      <path d="M36 4 L68 36 L36 68 L4 36 Z" fill="none" stroke="currentColor" stroke-width="1"/>
+      <path d="M36 20 L52 36 L36 52 L20 36 Z" fill="none" stroke="currentColor" stroke-width="0.8"/>
+      <circle cx="36" cy="36" r="3" fill="currentColor" opacity=".55"/>
+      <path d="M0 0 L8 8 M72 0 L64 8 M0 72 L8 64 M72 72 L64 64" stroke="currentColor" stroke-width="0.8"/>
+    </pattern>
   </defs>
 </svg>
+<div class="girih-layer" aria-hidden="true">
+  <svg width="100%" height="100%"><rect width="100%" height="100%" fill="url(#girih)"/></svg>
+</div>
 <svg class="corner-ornament tl" viewBox="0 0 280 280" aria-hidden="true"><use href="#mandala"/></svg>
 <svg class="corner-ornament br" viewBox="0 0 280 280" aria-hidden="true"><use href="#mandala"/></svg>
 
@@ -849,6 +846,7 @@ const T = {
     yourPhone:"Telefon raqami", uploadPhoto:"Hujjat rasmini yuklash",
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     yourPhoneLabel:"Telefon raqamingiz",
+    stepSent:"Yuborildi", stepReview:"Ko'rib chiqilmoqda", stepDone:"Tayyor",
     photoPreparing:"Rasm tayyorlanmoqda…", photoUploading:"Rasm yuklanmoqda…",
     photoReady:"Rasm tayyor ✓", photoFailed:"Rasm yuklanmadi — bosib qayta urinib ko'ring",
     sending:"Yuborilmoqda…",
@@ -870,8 +868,6 @@ const T = {
     copyLink:"Havolani nusxalash", linkCopied:"Havola nusxalandi ✓",
     shareBtn:"Ulashish", shareText:"Omad Tour — aviachiptalar, viza va notarial xizmatlar. Saytga o'ting:",
     openNow:"Hozir ochiq", closedNow:"Hozir yopiq",
-    currencyTitle:"Valyuta kurslari (1 USD)", currencyNote:"TMT — Turkmaniston rasmiy (belgilangan) kursi, bozor kursidan farq qilishi mumkin.",
-    currencyCalcBtn:"Kalkulyator",
     installBtn:"O'rnatish", installTextAndroid:"Saytni ilova sifatida telefon ekraningizga o'rnating — tezroq ochiladi.",
     installTextIOS:"Ilova sifatida qo'shish: pastdagi ulashish (⬆️) tugmasini bosing, so'ng \"Bosh ekranga qo'shish\"ni tanlang.",
     roundTripQuestion:"Qaytish chiptasini ham xohlaysizmi?",
@@ -954,6 +950,7 @@ const T = {
     yourPhone:"Номер телефона", uploadPhoto:"Загрузить фото документа",
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     yourPhoneLabel:"Ваш номер телефона",
+    stepSent:"Отправлено", stepReview:"На рассмотрении", stepDone:"Готово",
     photoPreparing:"Фото подготавливается…", photoUploading:"Фото загружается…",
     photoReady:"Фото готово ✓", photoFailed:"Фото не загрузилось — нажмите, чтобы повторить",
     sending:"Отправляется…",
@@ -975,8 +972,6 @@ const T = {
     copyLink:"Скопировать ссылку", linkCopied:"Ссылка скопирована ✓",
     shareBtn:"Поделиться", shareText:"Omad Tour — авиабилеты, виза и нотариальные услуги. Перейти на сайт:",
     openNow:"Сейчас открыто", closedNow:"Сейчас закрыто",
-    currencyTitle:"Курсы валют (1 USD)", currencyNote:"TMT — официальный (фиксированный) курс Туркменистана, может отличаться от рыночного.",
-    currencyCalcBtn:"Калькулятор",
     installBtn:"Установить", installTextAndroid:"Установите сайт как приложение на экран телефона — будет открываться быстрее.",
     installTextIOS:"Чтобы добавить как приложение: нажмите кнопку \"Поделиться\" (⬆️) внизу, затем выберите \"На экран «Домой»\".",
     roundTripQuestion:"Хотите также обратный билет?",
@@ -1059,6 +1054,7 @@ const T = {
     yourPhone:"Telefon belgisi", uploadPhoto:"Resminama suratyny ýüklemek",
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     yourPhoneLabel:"Telefon belgiňiz",
+    stepSent:"Iberildi", stepReview:"Seredilýär", stepDone:"Taýýar",
     photoPreparing:"Surat taýýarlanýar…", photoUploading:"Surat ýüklenýär…",
     photoReady:"Surat taýýar ✓", photoFailed:"Surat ýüklenmedi — gaýtadan synanyşmak üçin basyň",
     sending:"Iberilýär…",
@@ -1080,8 +1076,6 @@ const T = {
     copyLink:"Baglanyşygy göçürmek", linkCopied:"Baglanyşyk göçürildi ✓",
     shareBtn:"Paýlaşmak", shareText:"Omad Tour — awiabiletler, wiza we notarial hyzmatlar. Sahypa geçiň:",
     openNow:"Häzir açyk", closedNow:"Häzir ýapyk",
-    currencyTitle:"Walýuta kurslary (1 USD)", currencyNote:"TMT — Türkmenistanyň resmi (bellenen) kursy, bazar kursundan tapawutlanyp biler.",
-    currencyCalcBtn:"Kalkulýator",
     installBtn:"Ornaşdyrmak", installTextAndroid:"Sahypany programma hökmünde telefon ekranyňyza ornaşdyryň — çalt açylar.",
     installTextIOS:"Programma hökmünde goşmak: aşakdaky paýlaşmak (⬆️) düwmesine basyň, soň \"Baş ekrana goşmak\"y saýlaň.",
     roundTripQuestion:"Yzyna bilet hem isleýärsiňizmi?",
@@ -1239,6 +1233,47 @@ if("serviceWorker" in navigator){
   });
 }
 
+/* ===== PUSH-BILDIRISHNOMA (SMS o'rnini bosuvchi, bepul) =====
+   Mijoz viza so'rovini yuborganda, brauzeridan bildirishnoma yuborish
+   ruxsati so'raladi. Ruxsat berilsa — admin "✅ Tayyor" tugmasini bosgan
+   zahoti, mijozning telefon ekranida xabar chiqadi (sayt ochiq
+   bo'lmasa ham). Ruxsat berilmasa yoki qurilma qo'llab-quvvatlamasa —
+   hech narsa buzilmaydi, mijoz avvalgidek saytdan holatni ko'ra oladi. */
+const VAPID_PUBLIC_KEY = "BGaR19UdkWEqZzYNaCkCYg71XdYUPgMtbIP1y3jMdhtElVOGsZ-7SRwvKnAyNmAdNEJ7uHdUeh9Cm_SdzhtvjeM";
+function urlBase64ToUint8Array(base64String){
+  const padding = "=".repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(base64);
+  const out = new Uint8Array(raw.length);
+  for(let i = 0; i < raw.length; i++) out[i] = raw.charCodeAt(i);
+  return out;
+}
+async function subscribeForVisaUpdates(submissionId){
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    const perm = await Notification.requestPermission();
+    if(perm !== "granted") return false;
+
+    const reg = await navigator.serviceWorker.ready;
+    let sub = await reg.pushManager.getSubscription();
+    if(!sub){
+      sub = await reg.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+      });
+    }
+    const res = await request("/api/push-subscribe", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({ submissionId, subscription: sub.toJSON ? sub.toJSON() : sub })
+    }, { timeout:10000, attempts:2 });
+    const data = await res.json().catch(()=> null);
+    return !!(data && data.ok);
+  }catch(e){
+    // Bildirishnoma ishlamasa ham, asosiy jarayonga hech qanday ta'sir yo'q.
+    return false;
+  }
+}
+
 /* Havolani ISTALGAN ilova orqali ulashish — qurilmaning o'z tizim
    menyusini ochadi (Telegram, WhatsApp, Max, Instagram va h.k. —
    telefonda o'rnatilgan barcha ilovalar ro'yxati chiqadi). Android'da ham,
@@ -1284,122 +1319,7 @@ function renderHoursBadge(){
    qo'shimcha o'zi ham har necha daqiqada tekshirib turadi, shu bilan
    "real vaqt" tuyg'usini beradi. O'zgarish yo'nalishi (▲/▼) — oldingi
    tekshiruvga nisbatan solishtirib ko'rsatiladi. */
-const CURRENCY_CODES = ["RUB","UZS","TMT"];
-let lastCurrencyRates = null; // kalkulyator shundan foydalanadi
-async function fetchCurrencyRates(){
-  try{
-    const res = await request("https://open.er-api.com/v6/latest/USD", null, { timeout:10000, attempts:2 });
-    const data = await res.json();
-    if(data && data.result === "success" && data.rates) return data.rates;
-  }catch(e){}
-  return null;
-}
-function renderCurrencyWidget(rates, prevRates){
-  const el = document.getElementById("currencyWidget");
-  if(!el) return;
-  if(!rates){ el.style.display = "none"; return; }
-  const rows = CURRENCY_CODES.map(code=>{
-    const val = rates[code];
-    if(val === undefined || val === null) return "";
-    const prev = prevRates ? prevRates[code] : null;
-    let trendCls = "flat", trendChar = "•";
-    if(prev !== null && prev !== undefined && Math.abs(val - prev) > 1e-9){
-      if(val > prev){ trendCls = "up"; trendChar = "▲"; }
-      else { trendCls = "down"; trendChar = "▼"; }
-    }
-    const decimals = val >= 100 ? 0 : 2;
-    return `<div class="cur-row">
-      <span class="cur-code">${esc(code)}</span>
-      <span class="cur-val">${val.toLocaleString(undefined,{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}</span>
-      <span class="cur-trend ${trendCls}">${trendChar}</span>
-    </div>`;
-  }).join("");
-  if(!rows){ el.style.display = "none"; return; }
-  el.style.display = "block";
-  lastCurrencyRates = rates;
-  const calcWasOpen = el.querySelector(".cur-calc.open") != null;
-  const prevAmount = el.querySelector("#curCalcInput")?.value || "";
-  const prevFrom = el.querySelector("#curCalcFrom")?.value || "USD";
-  el.innerHTML = `
-    <div class="cur-title-row">
-      <div class="cur-title">${esc(t('currencyTitle'))}</div>
-      <button type="button" class="cur-calc-toggle" id="curCalcToggle">${esc(t('currencyCalcBtn'))}</button>
-    </div>
-    <div class="cur-list">${rows}</div>
-    <div class="cur-calc${calcWasOpen ? " open" : ""}" id="curCalc">
-      <div class="cur-calc-row">
-        <input type="text" inputmode="decimal" id="curCalcInput" class="cur-calc-input" placeholder="0" value="${esc(prevAmount)}">
-        <select id="curCalcFrom" class="cur-calc-select">
-          <option value="USD">USD</option>
-          <option value="RUB">RUB</option>
-          <option value="UZS">UZS</option>
-          <option value="TMT">TMT</option>
-        </select>
-      </div>
-      <div class="cur-calc-results" id="curCalcResults"></div>
-    </div>
-    <div class="cur-note">${esc(t('currencyNote'))}</div>`;
-  const fromSel = el.querySelector("#curCalcFrom");
-  if(fromSel) fromSel.value = prevFrom;
-  bindCurrencyCalculator();
-}
-async function updateCurrencyWidget(){
-  const rates = await fetchCurrencyRates();
-  if(!rates) return;
-  const prev = store.getJSON("omad_currency_rates", null);
-  renderCurrencyWidget(rates, prev);
-  store.setJSON("omad_currency_rates", rates);
-}
 
-/* Valyuta kalkulyatori — mijoz istalgan summani (USD/RUB/UZS/TMT) kiritsa,
-   qolgan uch valyutada avtomatik hisoblab ko'rsatadi. Allaqachon
-   yuklab olingan kurslardan foydalanadi, qo'shimcha so'rov ketmaydi. */
-const ALL_CUR_CODES = ["USD","RUB","UZS","TMT"];
-function convertFromRates(amount, fromCode, rates){
-  if(!rates || isNaN(amount)) return null;
-  const rateOf = (code)=> code === "USD" ? 1 : rates[code];
-  const fromRate = rateOf(fromCode);
-  if(!fromRate) return null;
-  const usdAmount = amount / fromRate;
-  const out = {};
-  ALL_CUR_CODES.forEach(code=>{ out[code] = usdAmount * rateOf(code); });
-  return out;
-}
-function bindCurrencyCalculator(){
-  const toggle = document.getElementById("curCalcToggle");
-  const calc = document.getElementById("curCalc");
-  const input = document.getElementById("curCalcInput");
-  const fromSel = document.getElementById("curCalcFrom");
-  const resultsEl = document.getElementById("curCalcResults");
-  if(!toggle || !calc || !input || !fromSel || !resultsEl) return;
-
-  toggle.addEventListener("click", ()=>{
-    calc.classList.toggle("open");
-    if(calc.classList.contains("open")) input.focus();
-  });
-
-  function recompute(){
-    const amount = parseFloat((input.value || "").replace(/\s/g,"").replace(",", "."));
-    const fromCode = fromSel.value;
-    if(!amount || isNaN(amount) || !lastCurrencyRates){
-      resultsEl.innerHTML = "";
-      return;
-    }
-    const out = convertFromRates(amount, fromCode, lastCurrencyRates);
-    if(!out){ resultsEl.innerHTML = ""; return; }
-    resultsEl.innerHTML = ALL_CUR_CODES.filter(c => c !== fromCode).map(code=>{
-      const v = out[code];
-      const decimals = v >= 100 ? 0 : 2;
-      return `<div class="cur-calc-result-row">
-        <span class="cur-calc-result-code">${code}</span>
-        <span class="cur-calc-result-val">${v.toLocaleString(undefined,{minimumFractionDigits:decimals,maximumFractionDigits:decimals})}</span>
-      </div>`;
-    }).join("");
-  }
-  input.addEventListener("input", recompute);
-  fromSel.addEventListener("change", recompute);
-  recompute();
-}
 
 function formatSize(b){
   if(b < 1024) return b + " B";
@@ -1472,6 +1392,37 @@ async function notifyTelegramVisa(base64, phone, submissionId, extra){
         barcode: extra && extra.barcode
       })
     }, { timeout:20000, attempts:1 });
+    const data = await res.json().catch(()=> null);
+    return !!(data && data.ok);
+  }catch(e){ return false; }
+}
+
+/* Sekin internetda mijozni kuttirmaslik uchun: rasm hali yuklanayotgan
+   bo'lsa, adminga DARHOL eng muhim ma'lumot (telefon + barkod) matn
+   ko'rinishida, holat tugmalari bilan yuboriladi. Rasmning o'zi fonda
+   tayyor bo'lgach, alohida yetkaziladi. */
+async function notifyTelegramVisaPending(phone, submissionId, extra){
+  try{
+    const res = await request("/api/notify-telegram", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        pendingPhoto: true, phone, submissionId,
+        barcode: extra && extra.barcode
+      })
+    }, { timeout:15000, attempts:2 });
+    const data = await res.json().catch(()=> null);
+    return !!(data && data.ok);
+  }catch(e){ return false; }
+}
+/* Fonda yuklanib bo'lgan rasmni keyinroq, alohida yetkazish. */
+async function notifyTelegramVisaPhoto(base64, phone, submissionId){
+  try{
+    const res = await request("/api/notify-telegram", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        imageBase64: base64, phone, submissionId, photoOnly: true
+      })
+    }, { timeout:25000, attempts:2 });
     const data = await res.json().catch(()=> null);
     return !!(data && data.ok);
   }catch(e){ return false; }
@@ -1599,6 +1550,17 @@ async function addVisa(phone, imageUrl, id, extra){
   });
   const r = await kvSet("visa_submissions", list.slice(0, MAX_VISA_ITEMS));
   return { id, saved: r.ok, detail: r.detail };
+}
+/* Rasm fonda yuklanib bo'lgach, allaqachon saqlangan so'rovga uni qo'shadi.
+   (Tezkor yuborishda so'rov avval rasmsiz saqlanadi — mijoz kutmasligi uchun.) */
+async function updateVisaImage(id, imageUrl){
+  if(!imageUrl) return false;
+  const list = (await fetchVisa()).slice();
+  const idx = list.findIndex(v => v.id === id);
+  if(idx === -1) return false;
+  list[idx] = Object.assign({}, list[idx], { imageUrl });
+  const r = await kvSet("visa_submissions", list);
+  return !!r.ok;
 }
 function myVisaIds(){ return store.getJSON("omad_my_visa_ids", []); }
 function addMyVisaId(id){ const a = myVisaIds(); a.push(id); store.setJSON("omad_my_visa_ids", a); }
@@ -2193,7 +2155,6 @@ function helpScreen(){
 function newsScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('newsTitle'))}</h2>
-    <div class="currency-widget" id="currencyWidget" style="display:none"></div>
     <div id="newsBox"><div class="footer-note">${esc(t('loading'))}</div></div>
   </div>`;
 }
@@ -2864,39 +2825,64 @@ function bindVizaForm(){
     btn.disabled = true;
     btn.textContent = t('sending');
     status.className = "footer-note";
-    status.textContent = up.status === "done" ? "" : t('photoUploading');
+    status.textContent = "";
+
+    const phoneVal = getPhoneValue("viza").full;
+    const id = Date.now();
+    // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) barkod —
+    // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
+    const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
 
     try{
-      // Rasm allaqachon fayl tanlangan zahoti yuklana boshlagan — odatda bu yerda
-      // darhol tayyor turadi (yashil ✓). Agar hali tugamagan bo'lsa, shu yerda kutamiz.
-      const url = await up.resolve();
-      const phoneVal = getPhoneValue("viza").full;
-      const id = Date.now();
-      // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) barkod —
-      // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
-      const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
+      // ===== TEZKOR YUBORISH =====
+      // Rasm fayl tanlangan zahoti fonda yuklana boshlagan. Ko'p hollarda
+      // (yaxshi internetda) u shu paytga kelib ALLAQACHON tayyor bo'ladi —
+      // unda hech qanday kutish bo'lmaydi. Sekin internetda esa mijozni
+      // kuttirmaymiz: eng muhim ma'lumot (telefon + barkod) DARHOL saqlanadi
+      // va adminga yuboriladi, rasm esa fonda yakunlanib, keyin qo'shiladi.
+      const uploadedNow = (up.status === "done") ? await up.resolve() : null;
 
-      // Ma'lumotlar bazasiga saqlash (asosiy, majburiy) va Telegramga bildirishnoma
-      // (rasm baytlari to'g'ridan-to'g'ri, havola orqali emas) bir vaqtda ketadi —
-      // shu tufayli "birinchisi yo'qoladi" degan poyga holati endi bo'lmaydi.
-      const [visaResult, notified] = await Promise.all([
-        addVisa(phoneVal, url, id, { barcode: barcodeVal }),
-        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal })
-      ]);
-
+      // 1) So'rovni bazaga saqlaymiz — bu ASOSIY qadam. Faqat shu
+      //    muvaffaqiyatli bo'lgandagina mijozga "qabul qilindi" deymiz,
+      //    aks holda hech qachon aldab "yuborildi" demaymiz.
+      const visaResult = await addVisa(phoneVal, uploadedNow || "", id, { barcode: barcodeVal });
       if(!visaResult.saved){
         throw new Error(visaResult.detail || "save failed");
       }
       addMyVisaId(id);
-      if(!notified){
-        // So'rov saqlandi — bu asosiysi. Telegram bildirishnomasi serverda
-        // qayta urinib ko'rilgan va oxirida hech bo'lmasa matnli ogohlantirish
-        // yuborilgan bo'lishi kerak, shu sabab foydalanuvchiga xato ko'rsatmaymiz.
-        console.warn("Telegram notification did not confirm delivery for visa #" + id);
+
+      // Mijozdan bildirishnoma ruxsatini so'raymiz — shunda vizasi tayyor
+      // bo'lganda telefoniga darhol xabar boradi, saytga qayta kirib
+      // tekshirib o'tirmaydi. Bu — fon rejimida, asosiy jarayonni
+      // kuttirmasdan ketadi.
+      subscribeForVisaUpdates(id).catch(()=>{});
+
+      if(uploadedNow){
+        // Rasm allaqachon tayyor — odatdagidek, rasm bilan birga yuboramiz.
+        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal })
+          .then(ok => { if(!ok) console.warn("Telegram notify not confirmed for visa #" + id); });
+      }else{
+        // Rasm hali yuklanmoqda — mijozni kuttirmaymiz. Adminga darhol
+        // matnli xabar ketadi (telefon + barkod, tugmalar bilan), rasm esa
+        // fonda tayyor bo'lgach alohida yuboriladi va bazaga qo'shiladi.
+        notifyTelegramVisaPending(phoneVal, id, { barcode: barcodeVal })
+          .then(ok => { if(!ok) console.warn("Pending notify not confirmed for visa #" + id); });
+
+        up.resolve().then(async (url)=>{
+          try{
+            await updateVisaImage(id, url);
+            await notifyTelegramVisaPhoto(up.base64, phoneVal, id);
+          }catch(err){
+            console.warn("Background photo delivery failed for visa #" + id, err);
+          }
+        }).catch(err => {
+          console.warn("Background upload failed for visa #" + id, err);
+        });
       }
+
       status.className = "footer-note ok";
       status.textContent = t('submitSuccess');
-      setTimeout(home, 1500);
+      setTimeout(home, 1200);
     }catch(e){
       status.className = "footer-note err";
       status.textContent = t('submitFail');
@@ -2907,6 +2893,28 @@ function bindVizaForm(){
   });
 }
 
+/* Jarayon bosqichlari — mijoz o'z so'rovi qaysi bosqichda ekanini
+   BIR QARASHDA ko'radi. Bu "qachon bo'ladi?" degan qo'ng'iroqlarni
+   sezilarli kamaytiradi, chunki javob ekranning o'zida turadi. */
+function statusSteps(currentStatus){
+  const steps = [
+    { key:"sent",     label: t('stepSent') },
+    { key:"review",   label: t('stepReview') },
+    { key:"done",     label: t('stepDone') }
+  ];
+  // "new" va "pending" — ikkalasi ham 2-bosqich (ko'rib chiqilmoqda).
+  const activeIdx = currentStatus === "ready" ? 2 : 1;
+  return `<div class="steps-row">
+    ${steps.map((s,i)=>{
+      const cls = i < activeIdx ? "done" : (i === activeIdx ? "active" : "");
+      const mark = i < activeIdx ? "✓" : (i + 1);
+      return `<div class="step ${cls}">
+        <span class="step-dot">${mark}</span>
+        <span class="step-label">${esc(s.label)}</span>
+      </div>${i < steps.length - 1 ? `<span class="step-line ${i < activeIdx ? 'done' : ''}"></span>` : ""}`;
+    }).join("")}
+  </div>`;
+}
 function bindMyStatus(){
   const box = document.getElementById("statusBox");
   const ids = myVisaIds();
@@ -2918,11 +2926,14 @@ function bindMyStatus(){
       setSeenStatus(v.id, v.status);
       const foot = `<div class="footer-note" style="margin:8px 0 0;text-align:left">${esc(v.date)} · ID: ${v.id}</div>`;
       const groupBtn = `<a class="glass-btn" href="${VISA_GROUP_LINK}" target="_blank" rel="noopener" style="margin-top:10px">${iconCircle(ICONS.telegram)}<span class="label">${esc(t('vizaGroup'))}</span></a>`;
+      const bar = statusSteps(v.status);
+      const codeLine = v.barcode
+        ? `<div class="status-code">${esc(t('barcodeLabel'))}: <b>${esc(v.barcode)}</b></div>` : "";
       if(v.status === "ready")
-        return `<div class="status-card status-card-ready"><b>${esc(t('statusReadyTitle'))}</b><p>${esc(t('statusReadyText'))}</p>${groupBtn}${foot}</div>`;
+        return `<div class="status-card status-card-ready">${bar}<b>${esc(t('statusReadyTitle'))}</b><p>${esc(t('statusReadyText'))}</p>${codeLine}${groupBtn}${foot}</div>`;
       if(v.status === "pending")
-        return `<div class="status-card status-card-pending"><b>${esc(t('statusPendingTitle'))}</b><p>${esc(t('statusPendingText'))}</p>${groupBtn}${foot}</div>`;
-      return `<div class="status-card status-card-new"><b>${esc(t('statusNewTitle'))}</b><p>${esc(t('statusNewText'))}</p>${foot}</div>`;
+        return `<div class="status-card status-card-pending">${bar}<b>${esc(t('statusPendingTitle'))}</b><p>${esc(t('statusPendingText'))}</p>${codeLine}${groupBtn}${foot}</div>`;
+      return `<div class="status-card status-card-new">${bar}<b>${esc(t('statusNewTitle'))}</b><p>${esc(t('statusNewText'))}</p>${codeLine}${foot}</div>`;
     }).join("");
   });
 }
@@ -2951,14 +2962,6 @@ function bindHelp(){
 }
 
 function bindNews(){
-  // Valyuta kurslari — bu ekranning doimiy, o'zgarmas tepa qismi. Yangilik
-  // qo'shilsa yoki o'chirilsa ham, bunga hech qanday ta'sir qilmaydi —
-  // yangiliklar ro'yxati shuning pastidan joylashib ketaveradi.
-  const cachedRates = store.getJSON("omad_currency_rates", null);
-  if(cachedRates) renderCurrencyWidget(cachedRates, null);
-  updateCurrencyWidget();
-  clearInterval(window.__currencyInterval);
-  window.__currencyInterval = setInterval(updateCurrencyWidget, 5 * 60000);
 
   fetchNews().then(list=>{
     setNewsSeen(list.length);
