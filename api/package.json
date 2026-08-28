@@ -1,0 +1,10 @@
+{
+  "name": "omad-tour",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Omad Tour — aviachiptalar, viza va notarial xizmatlar sayti",
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
