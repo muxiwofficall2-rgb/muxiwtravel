@@ -166,6 +166,73 @@ async function saveVisaList(list) {
   return r.ok;
 }
 
+/* ===== MIJOZGA PUSH-BILDIRISHNOMA YUBORISH =====
+   Admin "✅ Tayyor" tugmasini bosgan zahoti, mijozning telefon ekranida
+   xabar chiqadi — u saytni ochib turmagan bo'lsa ham. SMS o'rnini bosadi,
+   butunlay bepul (hech qanday operator yoki to'lov kerak emas).
+
+   Ishlashi uchun Vercel'da 2 ta muhit o'zgaruvchisi bo'lishi kerak:
+   VAPID_PUBLIC_KEY va VAPID_PRIVATE_KEY. Agar ular sozlanmagan bo'lsa,
+   bu funksiya shunchaki jim o'tadi — qolgan hamma narsa avvalgidek
+   ishlayveradi, hech narsa buzilmaydi. */
+async function fetchPushSubs() {
+  const { url, token } = redisConfig();
+  if (!url || !token) return [];
+  try {
+    const r = await fetchWithTimeout(`${url}/get/push_subs`, {
+      headers: { Authorization: `Bearer ${token}` },
+      cache: "no-store",
+    }, 6000);
+    const data = await r.json().catch(() => null);
+    if (!data || !data.result) return [];
+    return JSON.parse(data.result) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+async function sendPushToClient(submissionId, status) {
+  const pub = process.env.VAPID_PUBLIC_KEY;
+  const priv = process.env.VAPID_PRIVATE_KEY;
+  if (!pub || !priv) return; // Sozlanmagan — jim o'tamiz.
+
+  const subs = await fetchPushSubs();
+  const entry = subs.find((s) => s.submissionId === submissionId);
+  if (!entry || !entry.subscription) return;
+
+  let webpush;
+  try {
+    webpush = (await import("web-push")).default;
+  } catch (e) {
+    console.warn("[telegram-webhook] web-push kutubxonasi topilmadi");
+    return;
+  }
+
+  webpush.setVapidDetails("mailto:omadru@bk.ru", pub, priv);
+
+  const payload =
+    status === "ready"
+      ? {
+          title: "✅ Vizangiz tayyor!",
+          body: "Anketangiz bo'yicha natija tayyor. Batafsil ko'rish uchun bosing.",
+          url: "/",
+          tag: "omad-visa-" + submissionId,
+        }
+      : {
+          title: "⏳ So'rovingiz ko'rib chiqilmoqda",
+          body: "Anketangiz hali tekshirilmoqda. Tayyor bo'lgach xabar beramiz.",
+          url: "/",
+          tag: "omad-visa-" + submissionId,
+        };
+
+  try {
+    await webpush.sendNotification(entry.subscription, JSON.stringify(payload));
+    console.log("[telegram-webhook] push sent for submission", submissionId);
+  } catch (e) {
+    console.warn("[telegram-webhook] push send error:", e && e.statusCode, e && e.body);
+  }
+}
+
 // GET /api/telegram-webhook — human-facing diagnostic, see comment block above.
 async function handleDiagnostic(req, res) {
   const { url: redisUrl, token: redisToken } = redisConfig();
@@ -287,20 +354,33 @@ export default async function handler(req, res) {
       item.status = status;
       const saved = await saveVisaList(list);
 
-      const oldCaption = (cq.message && cq.message.caption) || "";
-      const cleanCaption = oldCaption.replace(/\n\nHolat:.*/s, "");
+      // Xabar rasm bilan bo'lsa — caption tahrirlanadi; matnli bo'lsa
+      // (tezkor rejimda rasm keyinroq keladi) — matnning o'zi tahrirlanadi.
+      const isPhotoMsg = !!(cq.message && cq.message.photo);
+      const oldText = (cq.message && (cq.message.caption || cq.message.text)) || "";
+      const cleanText = oldText.replace(/\n\nHolat:.*/s, "");
       const statusLine = status === "ready" ? "✅ Tayyor" : "⏳ Hali tayyor emas";
-      const finalCaption = saved
-        ? `${cleanCaption}\n\nHolat: ${statusLine}`
-        : `${cleanCaption}\n\n⚠️ Saqlashda xatolik yuz berdi, qayta bosib ko'ring.`;
+      const finalText = saved
+        ? `${cleanText}\n\nHolat: ${statusLine}`
+        : `${cleanText}\n\n⚠️ Saqlashda xatolik yuz berdi, qayta bosib ko'ring.`;
 
       if (cq.message) {
-        await tg("editMessageCaption", {
+        await tg(isPhotoMsg ? "editMessageCaption" : "editMessageText", {
           chat_id: cq.message.chat.id,
           message_id: cq.message.message_id,
-          caption: finalCaption,
+          [isPhotoMsg ? "caption" : "text"]: finalText,
           reply_markup: cq.message.reply_markup,
         });
+      }
+
+      // ===== MIJOZGA AVTOMATIK BILDIRISHNOMA =====
+      // Holat saqlangach, mijozning telefoniga push-bildirishnoma
+      // yuboriladi — u saytni ochib turmagan bo'lsa ham ko'radi.
+      // Bu SMS o'rnini bosadi va butunlay bepul.
+      if (saved) {
+        sendPushToClient(id, status).catch((err) =>
+          console.warn("[telegram-webhook] push notification failed:", err && err.message)
+        );
       }
 
       console.log("[telegram-webhook] status update complete:", { id, status, saved });
