@@ -1,11 +1,14 @@
-// sw.js — Omad Tour uchun eng minimal Service Worker.
+// sw.js — Omad Tour uchun Service Worker.
 //
-// Bu saytning deyarli barcha ma'lumotlari (narxlar, yangiliklar, viza
-// holati, valyuta kurslari) doim JONLI va yangi bo'lishi kerak, shuning
-// uchun bu Service Worker HECH NARSANI keshlamaydi — u faqat brauzerlarga
-// "bu sayt ilova sifatida o'rnatilishi mumkin" ekanini bildirish uchun
-// mavjud (buni talab qiladigan ba'zi brauzerlar uchun). Barcha so'rovlar
-// har doim to'g'ridan-to'g'ri tarmoqdan olinadi.
+// Ikki vazifasi bor:
+//   1) Saytni telefon ekraniga "ilova" sifatida o'rnatish imkonini berish.
+//   2) PUSH-BILDIRISHNOMA qabul qilish — admin Telegram'da "✅ Tayyor"
+//      tugmasini bosgan zahoti, mijozning telefon ekranida xabar chiqadi
+//      (u saytni ochib turmagan bo'lsa ham). Bu SMS o'rnini bosadi va
+//      butunlay BEPUL.
+//
+// Bu saytning ma'lumotlari (yangiliklar, viza holati) doim JONLI bo'lishi
+// kerak, shuning uchun HECH NARSA keshlanmaydi.
 
 self.addEventListener("install", (event) => {
   self.skipWaiting();
@@ -18,4 +21,43 @@ self.addEventListener("activate", (event) => {
 self.addEventListener("fetch", (event) => {
   // Hech qanday keshlash yo'q — shunchaki oddiy tarmoq so'rovini o'tkazib yuboramiz.
   event.respondWith(fetch(event.request));
+});
+
+// ===== PUSH-BILDIRISHNOMA =====
+self.addEventListener("push", (event) => {
+  let payload = {};
+  try {
+    payload = event.data ? event.data.json() : {};
+  } catch (e) {
+    payload = { title: "Omad Tour", body: event.data ? event.data.text() : "" };
+  }
+  const title = payload.title || "Omad Tour";
+  const options = {
+    body: payload.body || "",
+    icon: payload.icon || "/icon-192.png",
+    badge: payload.icon || "/icon-192.png",
+    tag: payload.tag || "omad-visa",
+    renotify: true,
+    requireInteraction: false,
+    data: { url: payload.url || "/" },
+  };
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+// Bildirishnoma bosilganda — saytni ochadi (yoki allaqachon ochiq bo'lsa,
+// o'sha oynani old planga chiqaradi).
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || "/";
+  event.waitUntil(
+    self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
+      for (const client of list) {
+        if ("focus" in client) {
+          client.navigate(targetUrl).catch(() => {});
+          return client.focus();
+        }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+    })
+  );
 });
