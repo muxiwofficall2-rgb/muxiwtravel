@@ -91,6 +91,17 @@ async function tgSendPhoto(blob, caption, submissionId) {
   return data;
 }
 
+/* Bir necha anketa (oila a'zolari) birga yuborilganda, har bir xabar
+   tepasida "Oilaviy blanka N / M" deb ko'rsatiladi — shunda admin qaysi
+   biri kimga tegishli ekanini adashtirmaydi. Bitta anketa bo'lsa —
+   hech qanday qo'shimcha sarlavha chiqmaydi. */
+function groupTitle(index, total) {
+  const n = parseInt(index, 10);
+  const t = parseInt(total, 10);
+  if (!t || t < 2 || !n) return "";
+  return `👨‍👩‍👧 <b>Oilaviy blanka ${n} / ${t}</b>\n\n`;
+}
+
 async function tgSendMessage(text, parseMode, submissionId) {
   const payload = { chat_id: ADMIN_CHAT_ID, text };
   if (parseMode) payload.parse_mode = parseMode;
@@ -139,7 +150,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, phone, submissionId, barcode, pendingPhoto, photoOnly } = req.body || {};
+    const { imageBase64, phone, submissionId, barcode, pendingPhoto, photoOnly,
+            groupIndex, groupTotal } = req.body || {};
 
     // ===== REJIM 1: "Rasm keyinroq" xabari =====
     // Mijozning interneti sekin bo'lsa, rasm hali yuklanayotgan bo'ladi.
@@ -148,7 +160,7 @@ export default async function handler(req, res) {
     // tayyor bo'lgach, alohida yetkaziladi (REJIM 2).
     if (pendingPhoto) {
       const lines = [
-        `📥 <b>Yangi viza so'rovi</b>`,
+        groupTitle(groupIndex, groupTotal) + `📥 <b>Yangi viza so'rovi</b>`,
         `📞 Telefon: <code>${escapeHtml(phone) || "—"}</code>`
       ];
       if (barcode) lines.push(`📋 Ariza raqami (barkod):\n<code>${escapeHtml(barcode)}</code>`);
@@ -162,7 +174,8 @@ export default async function handler(req, res) {
     // ===== REJIM 2: faqat rasm (matni allaqachon yuborilgan) =====
     if (photoOnly) {
       const blobOnly = base64ToBlob(imageBase64);
-      const capOnly = `🖼 So'rov #${submissionId || "—"} uchun hujjat rasmi.`;
+      const capOnly = groupTitle(groupIndex, groupTotal) +
+        `🖼 So'rov #${submissionId || "—"} uchun hujjat rasmi.`;
       try {
         // Tugmalar allaqachon oldingi (matnli) xabarda yuborilgan, shuning
         // uchun bu yerda ularni takrorlamaymiz.
@@ -177,11 +190,14 @@ export default async function handler(req, res) {
     }
 
     // ===== REJIM 3 (odatiy): rasm + matn birga =====
-    // Barkod rasmning O'Z tagiga (caption ichiga) ham yoziladi — shunda u
-    // albatta ko'rinadi. Undan tashqari, pastda ALOHIDA xabar ham ketadi,
-    // chunki caption ichidagi matnni Telegram'da bir bosishda nusxalab
-    // bo'lmaydi, alohida <code> xabarni esa bosib nusxalash mumkin.
-    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${escapeHtml(phone) || "—"}` +
+    // Barkod rasmning O'Z tagiga (caption ichiga) yoziladi — u yerdagi
+    // raqamni Telegram'da bosib turib nusxalash mumkin, shuning uchun
+    // alohida takroriy xabar YUBORILMAYDI (u ortiqcha edi).
+    // Agar mijoz bir necha anketa (oila a'zolari) yuborgan bo'lsa, har
+    // birining tepasida "Oilaviy blanka N" deb ko'rsatiladi — shunda admin
+    // qaysi biri kimga tegishli ekanini adashtirmaydi.
+    const caption = groupTitle(groupIndex, groupTotal) +
+      `Viza tekshiruvi so'rovi.\nTelefon: ${escapeHtml(phone) || "—"}` +
       (barcode ? `\nAriza raqami (barkod): ${escapeHtml(barcode)}` : "");
     const blob = base64ToBlob(imageBase64);
 
@@ -189,17 +205,6 @@ export default async function handler(req, res) {
     for (let attempt = 0; attempt < 2; attempt++) {
       try {
         await tgSendPhoto(blob, caption, submissionId);
-
-        // Nusxalash uchun qulay, alohida xabar: <code> formatidagi barkodga
-        // BIR MARTA teginsangiz — avtomatik nusxalanadi.
-        // MUHIM: bu AWAIT bilan kutiladi. Vercel javob qaytarilgan zahoti
-        // funksiyani DARHOL to'xtatadi, shuning uchun kutilmasa bu xabar
-        // yuborilmay qolar edi (aynan shu sabab avval barkod kelmagan).
-        if (barcode) {
-          const msg = `📋 <b>Ariza raqami (barkod):</b>\n<code>${escapeHtml(barcode)}</code>`;
-          await tgSendMessage(msg, "HTML").catch(() => {});
-        }
-
         return res.status(200).json({ ok: true, method: "photo" });
       } catch (e) {
         lastErr = e;
