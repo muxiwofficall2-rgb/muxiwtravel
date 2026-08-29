@@ -517,6 +517,18 @@
     border:1px solid var(--glass-border);
   }
 
+  .push-cta{
+    display:flex;align-items:center;gap:12px;width:100%;
+    margin:0 0 16px;padding:13px 14px;border-radius:16px;text-align:left;
+    background:rgba(232,53,79,.09);border:1.5px solid rgba(232,53,79,.35);
+    cursor:pointer;font-family:inherit;
+    animation:fadeUp .4s ease;
+  }
+  .push-cta.on{background:rgba(34,192,118,.1);border-color:rgba(34,192,118,.4);cursor:default;}
+  .push-cta-icon{font-size:22px;flex-shrink:0;}
+  .push-cta-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .push-cta-text b{font-size:14px;color:var(--text);}
+  .push-cta-text span{font-size:12px;line-height:1.4;color:var(--text-dim);}
   .steps-row{
     display:flex;align-items:flex-start;justify-content:space-between;
     margin:0 0 14px;gap:2px;
@@ -847,6 +859,9 @@ const T = {
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     yourPhoneLabel:"Telefon raqamingiz",
     stepSent:"Yuborildi", stepReview:"Ko'rib chiqilmoqda", stepDone:"Tayyor",
+    pushEnableTitle:"Bildirishnomalarni yoqing", pushEnableSub:"Yangi e'lonlar telefoningizga darhol keladi — bosing",
+    pushOnTitle:"Bildirishnomalar yoqilgan", pushOnSub:"Yangi e'lonlardan darhol xabardor bo'lasiz ✓",
+    pushFailed:"Yoqilmadi — telefon sozlamalaridan ruxsat bering",
     photoPreparing:"Rasm tayyorlanmoqda…", photoUploading:"Rasm yuklanmoqda…",
     photoReady:"Rasm tayyor ✓", photoFailed:"Rasm yuklanmadi — bosib qayta urinib ko'ring",
     sending:"Yuborilmoqda…",
@@ -951,6 +966,9 @@ const T = {
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     yourPhoneLabel:"Ваш номер телефона",
     stepSent:"Отправлено", stepReview:"На рассмотрении", stepDone:"Готово",
+    pushEnableTitle:"Включите уведомления", pushEnableSub:"Новые объявления придут сразу на телефон — нажмите",
+    pushOnTitle:"Уведомления включены", pushOnSub:"Вы сразу узнаете о новых объявлениях ✓",
+    pushFailed:"Не удалось — разрешите в настройках телефона",
     photoPreparing:"Фото подготавливается…", photoUploading:"Фото загружается…",
     photoReady:"Фото готово ✓", photoFailed:"Фото не загрузилось — нажмите, чтобы повторить",
     sending:"Отправляется…",
@@ -1055,6 +1073,9 @@ const T = {
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     yourPhoneLabel:"Telefon belgiňiz",
     stepSent:"Iberildi", stepReview:"Seredilýär", stepDone:"Taýýar",
+    pushEnableTitle:"Habarnamalary açyň", pushEnableSub:"Täze bildirişler telefonyňyza derrew geler — basyň",
+    pushOnTitle:"Habarnamalar açyk", pushOnSub:"Täze bildirişlerden derrew habarly bolarsyňyz ✓",
+    pushFailed:"Açylmady — telefon sazlamalaryndan rugsat beriň",
     photoPreparing:"Surat taýýarlanýar…", photoUploading:"Surat ýüklenýär…",
     photoReady:"Surat taýýar ✓", photoFailed:"Surat ýüklenmedi — gaýtadan synanyşmak üçin basyň",
     sending:"Iberilýär…",
@@ -1249,8 +1270,16 @@ function urlBase64ToUint8Array(base64String){
   return out;
 }
 async function subscribeForVisaUpdates(submissionId){
+  return subscribeToPush(submissionId);
+}
+
+/* Push obunasi. `submissionId` berilsa — o'sha viza so'roviga bog'lanadi
+   (holat o'zgarganda shaxsiy xabar keladi). Berilmasa ham obuna saqlanadi
+   va UMUMIY e'lonlar (yangiliklar) shu qurilmaga yetib boradi. */
+async function subscribeToPush(submissionId){
   try{
     if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    if(typeof Notification === "undefined") return false;
     const perm = await Notification.requestPermission();
     if(perm !== "granted") return false;
 
@@ -1264,14 +1293,25 @@ async function subscribeForVisaUpdates(submissionId){
     }
     const res = await request("/api/push-subscribe", {
       method:"POST", headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ submissionId, subscription: sub.toJSON ? sub.toJSON() : sub })
+      body: JSON.stringify({ submissionId: submissionId || null, subscription: sub.toJSON ? sub.toJSON() : sub })
     }, { timeout:10000, attempts:2 });
     const data = await res.json().catch(()=> null);
+    if(data && data.ok) store.set("omad_push_on", "1");
     return !!(data && data.ok);
   }catch(e){
     // Bildirishnoma ishlamasa ham, asosiy jarayonga hech qanday ta'sir yo'q.
     return false;
   }
+}
+/* Obuna holatini tekshirish — tugmani to'g'ri ko'rsatish uchun. */
+async function isPushSubscribed(){
+  try{
+    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
+    if(typeof Notification === "undefined" || Notification.permission !== "granted") return false;
+    const reg = await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription();
+    return !!sub;
+  }catch(e){ return false; }
 }
 
 /* Havolani ISTALGAN ilova orqali ulashish — qurilmaning o'z tizim
@@ -1528,8 +1568,22 @@ function createUploader(onStatus){
 
 /* ================== MA'LUMOTLAR ================== */
 async function fetchNews(){ return await kvGet("news_list", []); }
-async function addNews(text, imageUrl){
-  const list = (await fetchNews()).slice();
+/* Yangi e'lon chiqqanda barcha obunachilarga bildirishnoma yuborish. */
+async function broadcastNewsPush(text){
+  try{
+    const short = (text || "").trim();
+    const res = await request("/api/push-broadcast", {
+      method:"POST", headers:{ "Content-Type":"application/json" },
+      body: JSON.stringify({
+        title: "📢 Omad Tour — yangi e'lon",
+        body: short.length > 120 ? short.slice(0, 117) + "…" : short,
+        password: ADMIN_PASSWORD
+      })
+    }, { timeout:20000, attempts:1 });
+    return await res.json().catch(()=> null);
+  }catch(e){ return null; }
+}
+async function addNews(text, imageUrl){  const list = (await fetchNews()).slice();
   list.unshift({ id: Date.now(), text, imageUrl: imageUrl || "", date: new Date().toLocaleDateString("ru-RU") });
   return await kvSet("news_list", list.slice(0, MAX_NEWS_ITEMS));
 }
@@ -2155,6 +2209,13 @@ function helpScreen(){
 function newsScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('newsTitle'))}</h2>
+    <button type="button" class="push-cta" id="pushCta" style="display:none">
+      <span class="push-cta-icon">🔔</span>
+      <span class="push-cta-text">
+        <b id="pushCtaTitle">${esc(t('pushEnableTitle'))}</b>
+        <span id="pushCtaSub">${esc(t('pushEnableSub'))}</span>
+      </span>
+    </button>
     <div id="newsBox"><div class="footer-note">${esc(t('loading'))}</div></div>
   </div>`;
 }
@@ -2904,14 +2965,21 @@ function statusSteps(currentStatus){
   ];
   // "new" va "pending" — ikkalasi ham 2-bosqich (ko'rib chiqilmoqda).
   const activeIdx = currentStatus === "ready" ? 2 : 1;
+  // Viza TAYYOR bo'lgan holatda — oxirgi bosqich ham BAJARILGAN hisoblanadi
+  // (yashil ✓ bilan), chunki jarayon yakunlangan. Aks holda "Natija tayyor"
+  // deb yozilib turgan bo'lsa-yu, yonida qizil "3" raqami qolsa, mijoz
+  // "hali tugamaganmi?" deb chalkashadi.
+  const isFinished = currentStatus === "ready";
   return `<div class="steps-row">
     ${steps.map((s,i)=>{
-      const cls = i < activeIdx ? "done" : (i === activeIdx ? "active" : "");
-      const mark = i < activeIdx ? "✓" : (i + 1);
+      const isDone = i < activeIdx || (isFinished && i === activeIdx);
+      const cls = isDone ? "done" : (i === activeIdx ? "active" : "");
+      const mark = isDone ? "✓" : (i + 1);
+      const lineDone = i < activeIdx;
       return `<div class="step ${cls}">
         <span class="step-dot">${mark}</span>
         <span class="step-label">${esc(s.label)}</span>
-      </div>${i < steps.length - 1 ? `<span class="step-line ${i < activeIdx ? 'done' : ''}"></span>` : ""}`;
+      </div>${i < steps.length - 1 ? `<span class="step-line ${lineDone ? 'done' : ''}"></span>` : ""}`;
     }).join("")}
   </div>`;
 }
@@ -2962,6 +3030,37 @@ function bindHelp(){
 }
 
 function bindNews(){
+  // Bildirishnoma taklifi — agar mijoz hali obuna bo'lmagan bo'lsa,
+  // tepada chiroyli tugma ko'rinadi. Bosilganda ruxsat so'raladi va
+  // shundan keyin yangi e'lonlar telefon ekranida SMS kabi chiqadi.
+  const cta = document.getElementById("pushCta");
+  if(cta){
+    const supported = ("serviceWorker" in navigator) && ("PushManager" in window) && (typeof Notification !== "undefined");
+    if(supported){
+      isPushSubscribed().then(on=>{
+        if(on){
+          cta.style.display = "flex";
+          cta.classList.add("on");
+          document.getElementById("pushCtaTitle").textContent = t('pushOnTitle');
+          document.getElementById("pushCtaSub").textContent = t('pushOnSub');
+        }else{
+          cta.style.display = "flex";
+          cta.addEventListener("click", async ()=>{
+            const sub = document.getElementById("pushCtaSub");
+            sub.textContent = "…";
+            const ok = await subscribeToPush(null);
+            if(ok){
+              cta.classList.add("on");
+              document.getElementById("pushCtaTitle").textContent = t('pushOnTitle');
+              sub.textContent = t('pushOnSub');
+            }else{
+              sub.textContent = t('pushFailed');
+            }
+          });
+        }
+      });
+    }
+  }
 
   fetchNews().then(list=>{
     setNewsSeen(list.length);
@@ -3029,6 +3128,21 @@ function bindAdmin(){
     catch(e){ status.className = "footer-note err"; status.textContent = "Rasm yuklanmadi — matn rasmsiz saqlandi."; }
     const r = await addNews(val, imageUrl);
     if(!r.ok){ status.className = "footer-note err"; status.textContent = "Saqlanmadi: " + r.detail; }
+    else{
+      // Yangilik saqlandi — endi BARCHA obunachilarga bildirishnoma
+      // yuboramiz. Ular telefon ekranida SMS kabi ko'radi, sayt ochiq
+      // bo'lmasa ham.
+      status.className = "footer-note"; status.textContent = "Bildirishnoma yuborilmoqda…";
+      const push = await broadcastNewsPush(val);
+      if(push && push.ok){
+        status.className = "footer-note ok";
+        status.textContent = `Saqlandi ✓ — bildirishnoma ${push.sent} ta qurilmaga yuborildi.`;
+      }else{
+        status.className = "footer-note";
+        status.textContent = "Saqlandi ✓ (bildirishnoma yuborilmadi" +
+          (push && push.reason ? ": " + push.reason : "") + ")";
+      }
+    }
     input.value = "";
     document.getElementById("newsRemove").click();
     btn.disabled = false; btn.textContent = "Yangilik qo'shish";
