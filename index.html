@@ -1463,7 +1463,8 @@ async function notifyTelegramVisa(base64, phone, submissionId, extra){
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
         imageBase64: base64, phone, submissionId,
-        barcode: extra && extra.barcode
+        barcode: extra && extra.barcode,
+        groupIndex: extra && extra.groupIndex, groupTotal: extra && extra.groupTotal
       })
     }, { timeout:20000, attempts:1 });
     const data = await res.json().catch(()=> null);
@@ -1481,7 +1482,8 @@ async function notifyTelegramVisaPending(phone, submissionId, extra){
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
         pendingPhoto: true, phone, submissionId,
-        barcode: extra && extra.barcode
+        barcode: extra && extra.barcode,
+        groupIndex: extra && extra.groupIndex, groupTotal: extra && extra.groupTotal
       })
     }, { timeout:15000, attempts:2 });
     const data = await res.json().catch(()=> null);
@@ -1489,12 +1491,13 @@ async function notifyTelegramVisaPending(phone, submissionId, extra){
   }catch(e){ return false; }
 }
 /* Fonda yuklanib bo'lgan rasmni keyinroq, alohida yetkazish. */
-async function notifyTelegramVisaPhoto(base64, phone, submissionId){
+async function notifyTelegramVisaPhoto(base64, phone, submissionId, extra){
   try{
     const res = await request("/api/notify-telegram", {
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({
-        imageBase64: base64, phone, submissionId, photoOnly: true
+        imageBase64: base64, phone, submissionId, photoOnly: true,
+        groupIndex: extra && extra.groupIndex, groupTotal: extra && extra.groupTotal
       })
     }, { timeout:25000, attempts:2 });
     const data = await res.json().catch(()=> null);
@@ -2962,8 +2965,11 @@ function bindVizaForm(){
   /* Bitta anketani yuborish — bazaga saqlash, bildirishnomaga obuna va
      Telegramga xabar. Har bir anketa MUSTAQIL yozuv bo'ladi, shuning uchun
      admin ularni alohida-alohida ("✅ Tayyor" / "⏳") belgilay oladi. */
-  async function submitOne(a, phoneVal, id){
+  async function submitOne(a, phoneVal, id, groupIndex, groupTotal){
     const barcodeVal = (document.getElementById(a.prefix + "Barcode")?.value || "").trim();
+    // Bir necha anketa birga yuborilsa, Telegramda har biri "Oilaviy
+    // blanka N / M" deb belgilanadi — admin adashtirmasligi uchun.
+    const meta = { barcode: barcodeVal, groupIndex, groupTotal };
     // Rasm fayl tanlangan zahoti fonda yuklana boshlagan — yaxshi internetda
     // bu paytga kelib allaqachon tayyor bo'ladi (kutish bo'lmaydi).
     const uploadedNow = (a.uploader.status === "done") ? await a.uploader.resolve() : null;
@@ -2974,17 +2980,17 @@ function bindVizaForm(){
     subscribeForVisaUpdates(id).catch(()=>{});
 
     if(uploadedNow){
-      notifyTelegramVisa(a.uploader.base64, phoneVal, id, { barcode: barcodeVal })
+      notifyTelegramVisa(a.uploader.base64, phoneVal, id, meta)
         .then(ok => { if(!ok) console.warn("Telegram notify not confirmed for visa #" + id); });
     }else{
       // Sekin internet — mijozni kuttirmaymiz: adminga darhol matnli xabar
       // (telefon + barkod + tugmalar), rasm esa fonda tayyor bo'lgach keladi.
-      notifyTelegramVisaPending(phoneVal, id, { barcode: barcodeVal })
+      notifyTelegramVisaPending(phoneVal, id, meta)
         .then(ok => { if(!ok) console.warn("Pending notify not confirmed for visa #" + id); });
       a.uploader.resolve().then(async (url)=>{
         try{
           await updateVisaImage(id, url);
-          await notifyTelegramVisaPhoto(a.uploader.base64, phoneVal, id);
+          await notifyTelegramVisaPhoto(a.uploader.base64, phoneVal, id, meta);
         }catch(err){ console.warn("Background photo delivery failed for visa #" + id, err); }
       }).catch(err => console.warn("Background upload failed for visa #" + id, err));
     }
@@ -3023,7 +3029,7 @@ function bindVizaForm(){
         if(anketas.length > 1){
           status.textContent = `${i + 1} / ${anketas.length}…`;
         }
-        await submitOne(anketas[i], phoneVal, baseId + i);
+        await submitOne(anketas[i], phoneVal, baseId + i, i + 1, anketas.length);
       }
       status.className = "footer-note ok";
       status.textContent = t('submitSuccess');
