@@ -524,6 +524,30 @@
     border:1px solid var(--glass-border);
   }
 
+
+  .anketa-block{
+    background:var(--glass);border:1px solid var(--glass-border);
+    border-radius:16px;padding:14px 16px;margin-bottom:12px;
+    animation:fadeUp .35s ease;
+  }
+  .anketa-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;}
+  .anketa-num{font-size:13px;font-weight:800;color:var(--accent-red);text-transform:uppercase;letter-spacing:.04em;}
+  .anketa-del{
+    width:26px;height:26px;border-radius:50%;flex-shrink:0;
+    background:rgba(232,53,79,.15);border:1px solid rgba(232,53,79,.35);
+    color:var(--accent-red);font-size:13px;cursor:pointer;line-height:1;
+    display:flex;align-items:center;justify-content:center;font-family:inherit;
+  }
+  .add-anketa-btn{
+    display:flex;align-items:center;justify-content:center;gap:8px;width:100%;
+    padding:12px;border-radius:14px;cursor:pointer;font-family:inherit;
+    background:var(--glass);border:1.5px dashed var(--glass-border);
+    color:var(--text);font-size:14px;font-weight:700;
+    transition:border-color .15s,color .15s;
+  }
+  .add-anketa-btn:active{border-color:var(--accent-red);color:var(--accent-red);}
+  .add-anketa-plus{font-size:17px;font-weight:800;color:var(--accent-red);}
+
   .push-cta{
     display:flex;align-items:center;gap:12px;width:100%;
     margin:0 0 16px;padding:13px 14px;border-radius:16px;text-align:left;
@@ -865,6 +889,7 @@ const T = {
     yourPhone:"Telefon raqami", uploadPhoto:"Hujjat rasmini yuklash",
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     yourPhoneLabel:"Telefon raqamingiz",
+    anketaLabel:"Anketa", addAnketa:"Yana anketa qo'shish",
     stepSent:"Yuborildi", stepReview:"Ko'rib chiqilmoqda", stepDone:"Tayyor",
     pushEnableTitle:"Bildirishnomalarni yoqing", pushEnableSub:"Yangi e'lonlar telefoningizga darhol keladi — bosing",
     pushOnTitle:"Bildirishnomalar yoqilgan", pushOnSub:"Yangi e'lonlardan darhol xabardor bo'lasiz ✓",
@@ -972,6 +997,7 @@ const T = {
     yourPhone:"Номер телефона", uploadPhoto:"Загрузить фото документа",
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     yourPhoneLabel:"Ваш номер телефона",
+    anketaLabel:"Анкета", addAnketa:"Добавить ещё анкету",
     stepSent:"Отправлено", stepReview:"На рассмотрении", stepDone:"Готово",
     pushEnableTitle:"Включите уведомления", pushEnableSub:"Новые объявления придут сразу на телефон — нажмите",
     pushOnTitle:"Уведомления включены", pushOnSub:"Вы сразу узнаете о новых объявлениях ✓",
@@ -1079,6 +1105,7 @@ const T = {
     yourPhone:"Telefon belgisi", uploadPhoto:"Resminama suratyny ýüklemek",
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     yourPhoneLabel:"Telefon belgiňiz",
+    anketaLabel:"Anketa", addAnketa:"Ýene anketa goşmak",
     stepSent:"Iberildi", stepReview:"Seredilýär", stepDone:"Taýýar",
     pushEnableTitle:"Habarnamalary açyň", pushEnableSub:"Täze bildirişler telefonyňyza derrew geler — basyň",
     pushOnTitle:"Habarnamalar açyk", pushOnSub:"Täze bildirişlerden derrew habarly bolarsyňyz ✓",
@@ -2031,17 +2058,33 @@ function vizaFormScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('vizaSubmitBtn'))}</h2>
     <div class="attention-pulse">${t('vizaAttention')}</div>
-    <div class="field-label" style="margin-top:0">${esc(t('uploadPhoto'))}<span class="required-star">*</span></div>
-    ${dropzone('viza', t('uploadPhoto'))}
-    <div class="error-msg" id="vizaFileErr">${esc(t('required'))}</div>
-    <div class="ocr-status" id="ocrStatus" style="display:none"></div>
-    <div class="field-label">${esc(t('barcodeLabel'))}</div>
-    <input type="text" inputmode="numeric" id="vizaBarcode" placeholder="${esc(t('barcodePh'))}">
+    <div id="anketaList"></div>
+    <button type="button" class="add-anketa-btn" id="addAnketaBtn">
+      <span class="add-anketa-plus">＋</span>${esc(t('addAnketa'))}
+    </button>
     <div class="field-label" style="margin-top:14px">${esc(t('yourPhoneLabel'))}<span class="required-star">*</span></div>
     ${phoneInput('viza')}
     <div class="error-msg" id="vizaPhoneErr">${esc(t('phoneInvalid'))}</div>
     <button class="primary-btn" id="vizaSubmit">${esc(t('send'))}</button>
     <div class="footer-note" id="vizaStatus" style="min-height:18px"></div>
+  </div>`;
+}
+/* Bitta anketa bloki — rasm yuklash + barkod maydoni. Bir oila bir necha
+   kishi bo'lib kelganda, har biri uchun alohida blok qo'shiladi, lekin
+   telefon raqami bitta (umumiy) bo'lib qoladi. */
+function anketaBlock(idx){
+  const p = "viza" + idx;
+  return `<div class="anketa-block" id="anketaBlock${idx}" data-idx="${idx}">
+    <div class="anketa-head">
+      <span class="anketa-num">${esc(t('anketaLabel'))} ${idx + 1}</span>
+      ${idx > 0 ? `<button type="button" class="anketa-del" data-del="${idx}">✕</button>` : ""}
+    </div>
+    <div class="field-label" style="margin-top:0">${esc(t('uploadPhoto'))}<span class="required-star">*</span></div>
+    ${dropzone(p, t('uploadPhoto'))}
+    <div class="error-msg" id="${p}FileErr">${esc(t('required'))}</div>
+    <div class="ocr-status" id="${p}OcrStatus" style="display:none"></div>
+    <div class="field-label">${esc(t('barcodeLabel'))}</div>
+    <input type="text" inputmode="numeric" id="${p}Barcode" placeholder="${esc(t('barcodePh'))}">
   </div>`;
 }
 
@@ -2794,9 +2837,10 @@ async function tryDecodeBarcodeGraphic(file){
   }
 }
 
-async function runVizaOcr(file){
-  const statusEl = document.getElementById("ocrStatus");
-  const barcodeInput = document.getElementById("vizaBarcode");
+async function runVizaOcr(file, prefix){
+  const p = prefix || "viza0";
+  const statusEl = document.getElementById(p + "OcrStatus");
+  const barcodeInput = document.getElementById(p + "Barcode");
   if(!statusEl || !barcodeInput) return;
   statusEl.style.display = "block";
   statusEl.className = "ocr-status working";
@@ -2867,26 +2911,101 @@ async function runVizaOcr(file){
 }
 
 function bindVizaForm(){
-  // OCR (matn o'qish) va rasm yuklash — ikkalasi ham telefon protsessorini
-  // ishlatadi. Agar ikkalasi AYNAN bir paytda boshlansa, ayniqsa eskiroq
-  // telefonlarda, bu rasm yuklashni "bo'g'ib" qo'yib, xatoga olib kelishi
-  // mumkin edi. Shuning uchun rasm yuklash HAR DOIM birinchi, ustuvor
-  // bo'lib boshlanadi — OCR esa qisqa fursat kutib, undan keyin ishga
-  // tushadi (mijoz buni sezmaydi, chunki OCR baribir bir necha soniya davom etadi).
-  const up = wireDropzone("viza", (file)=> setTimeout(()=> runVizaOcr(file), 700));
   wirePhoneInput("viza");
 
+  const listBox = document.getElementById("anketaList");
   const btn = document.getElementById("vizaSubmit");
   const status = document.getElementById("vizaStatus");
+  const addBtn = document.getElementById("addAnketaBtn");
   let busy = false;
+
+  // Har bir anketa uchun: { idx, prefix, uploader }
+  const anketas = [];
+  let nextIdx = 0;
+
+  function renumber(){
+    // Blok o'chirilganda raqamlar ketma-ket qolishi uchun qayta raqamlaymiz
+    // (masalan 2-anketa o'chsa, 3-si "Anketa 2" bo'lib qoladi).
+    Array.from(listBox.querySelectorAll(".anketa-block")).forEach((el, i)=>{
+      const numEl = el.querySelector(".anketa-num");
+      if(numEl) numEl.textContent = t('anketaLabel') + " " + (i + 1);
+    });
+    // Faqat bitta anketa qolsa — o'chirish tugmasini yashiramiz.
+    const dels = listBox.querySelectorAll(".anketa-del");
+    dels.forEach(d => { d.style.display = anketas.length > 1 ? "flex" : "none"; });
+  }
+
+  function addAnketa(){
+    const idx = nextIdx++;
+    const prefix = "viza" + idx;
+    listBox.insertAdjacentHTML("beforeend", anketaBlock(idx));
+    // OCR rasm yuklashdan keyin, uni bo'g'ib qo'ymasligi uchun kechiktiriladi.
+    const uploader = wireDropzone(prefix, (file)=> setTimeout(()=> runVizaOcr(file, prefix), 700));
+    anketas.push({ idx, prefix, uploader });
+
+    const delBtn = document.querySelector(`[data-del="${idx}"]`);
+    if(delBtn){
+      delBtn.addEventListener("click", ()=>{
+        const pos = anketas.findIndex(a => a.idx === idx);
+        if(pos !== -1) anketas.splice(pos, 1);
+        const block = document.getElementById("anketaBlock" + idx);
+        if(block) block.remove();
+        renumber();
+      });
+    }
+    renumber();
+  }
+
+  addAnketa(); // birinchi anketa har doim bo'ladi
+  addBtn.addEventListener("click", addAnketa);
+
+  /* Bitta anketani yuborish — bazaga saqlash, bildirishnomaga obuna va
+     Telegramga xabar. Har bir anketa MUSTAQIL yozuv bo'ladi, shuning uchun
+     admin ularni alohida-alohida ("✅ Tayyor" / "⏳") belgilay oladi. */
+  async function submitOne(a, phoneVal, id){
+    const barcodeVal = (document.getElementById(a.prefix + "Barcode")?.value || "").trim();
+    // Rasm fayl tanlangan zahoti fonda yuklana boshlagan — yaxshi internetda
+    // bu paytga kelib allaqachon tayyor bo'ladi (kutish bo'lmaydi).
+    const uploadedNow = (a.uploader.status === "done") ? await a.uploader.resolve() : null;
+
+    const visaResult = await addVisa(phoneVal, uploadedNow || "", id, { barcode: barcodeVal });
+    if(!visaResult.saved) throw new Error(visaResult.detail || "save failed");
+    addMyVisaId(id);
+    subscribeForVisaUpdates(id).catch(()=>{});
+
+    if(uploadedNow){
+      notifyTelegramVisa(a.uploader.base64, phoneVal, id, { barcode: barcodeVal })
+        .then(ok => { if(!ok) console.warn("Telegram notify not confirmed for visa #" + id); });
+    }else{
+      // Sekin internet — mijozni kuttirmaymiz: adminga darhol matnli xabar
+      // (telefon + barkod + tugmalar), rasm esa fonda tayyor bo'lgach keladi.
+      notifyTelegramVisaPending(phoneVal, id, { barcode: barcodeVal })
+        .then(ok => { if(!ok) console.warn("Pending notify not confirmed for visa #" + id); });
+      a.uploader.resolve().then(async (url)=>{
+        try{
+          await updateVisaImage(id, url);
+          await notifyTelegramVisaPhoto(a.uploader.base64, phoneVal, id);
+        }catch(err){ console.warn("Background photo delivery failed for visa #" + id, err); }
+      }).catch(err => console.warn("Background upload failed for visa #" + id, err));
+    }
+  }
 
   btn.addEventListener("click", async ()=>{
     if(busy) return;
+
     const phoneOk = isPhoneValid("viza");
-    const hasFile = !!up.file;
     document.getElementById("vizaPhoneErr").style.display = phoneOk ? "none" : "block";
-    document.getElementById("vizaFileErr").style.display = hasFile ? "none" : "block";
-    if(!phoneOk || !hasFile) return;
+
+    // Har bir anketada rasm borligini tekshiramiz — qaysi biri bo'sh
+    // bo'lsa, aynan o'sha blokda xato ko'rsatiladi.
+    let allHaveFile = true;
+    anketas.forEach(a=>{
+      const has = !!a.uploader.file;
+      const errEl = document.getElementById(a.prefix + "FileErr");
+      if(errEl) errEl.style.display = has ? "none" : "block";
+      if(!has) allHaveFile = false;
+    });
+    if(!phoneOk || !allHaveFile || !anketas.length) return;
 
     busy = true;
     btn.disabled = true;
@@ -2895,58 +3014,17 @@ function bindVizaForm(){
     status.textContent = "";
 
     const phoneVal = getPhoneValue("viza").full;
-    const id = Date.now();
-    // OCR orqali avtomatik topilgan (yoki mijoz qo'lda tuzatgan) barkod —
-    // admin endi rasmdan o'qib o'tirmasdan, tayyor matnni ko'radi.
-    const barcodeVal = (document.getElementById("vizaBarcode")?.value || "").trim();
+    const baseId = Date.now();
 
     try{
-      // ===== TEZKOR YUBORISH =====
-      // Rasm fayl tanlangan zahoti fonda yuklana boshlagan. Ko'p hollarda
-      // (yaxshi internetda) u shu paytga kelib ALLAQACHON tayyor bo'ladi —
-      // unda hech qanday kutish bo'lmaydi. Sekin internetda esa mijozni
-      // kuttirmaymiz: eng muhim ma'lumot (telefon + barkod) DARHOL saqlanadi
-      // va adminga yuboriladi, rasm esa fonda yakunlanib, keyin qo'shiladi.
-      const uploadedNow = (up.status === "done") ? await up.resolve() : null;
-
-      // 1) So'rovni bazaga saqlaymiz — bu ASOSIY qadam. Faqat shu
-      //    muvaffaqiyatli bo'lgandagina mijozga "qabul qilindi" deymiz,
-      //    aks holda hech qachon aldab "yuborildi" demaymiz.
-      const visaResult = await addVisa(phoneVal, uploadedNow || "", id, { barcode: barcodeVal });
-      if(!visaResult.saved){
-        throw new Error(visaResult.detail || "save failed");
+      // Barcha anketalarni ketma-ket yuboramiz. ID'lar bir-biridan farq
+      // qilishi uchun har biriga alohida raqam beriladi.
+      for(let i = 0; i < anketas.length; i++){
+        if(anketas.length > 1){
+          status.textContent = `${i + 1} / ${anketas.length}…`;
+        }
+        await submitOne(anketas[i], phoneVal, baseId + i);
       }
-      addMyVisaId(id);
-
-      // Mijozdan bildirishnoma ruxsatini so'raymiz — shunda vizasi tayyor
-      // bo'lganda telefoniga darhol xabar boradi, saytga qayta kirib
-      // tekshirib o'tirmaydi. Bu — fon rejimida, asosiy jarayonni
-      // kuttirmasdan ketadi.
-      subscribeForVisaUpdates(id).catch(()=>{});
-
-      if(uploadedNow){
-        // Rasm allaqachon tayyor — odatdagidek, rasm bilan birga yuboramiz.
-        notifyTelegramVisa(up.base64, phoneVal, id, { barcode: barcodeVal })
-          .then(ok => { if(!ok) console.warn("Telegram notify not confirmed for visa #" + id); });
-      }else{
-        // Rasm hali yuklanmoqda — mijozni kuttirmaymiz. Adminga darhol
-        // matnli xabar ketadi (telefon + barkod, tugmalar bilan), rasm esa
-        // fonda tayyor bo'lgach alohida yuboriladi va bazaga qo'shiladi.
-        notifyTelegramVisaPending(phoneVal, id, { barcode: barcodeVal })
-          .then(ok => { if(!ok) console.warn("Pending notify not confirmed for visa #" + id); });
-
-        up.resolve().then(async (url)=>{
-          try{
-            await updateVisaImage(id, url);
-            await notifyTelegramVisaPhoto(up.base64, phoneVal, id);
-          }catch(err){
-            console.warn("Background photo delivery failed for visa #" + id, err);
-          }
-        }).catch(err => {
-          console.warn("Background upload failed for visa #" + id, err);
-        });
-      }
-
       status.className = "footer-note ok";
       status.textContent = t('submitSuccess');
       setTimeout(home, 1200);
