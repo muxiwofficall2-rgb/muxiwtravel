@@ -385,12 +385,19 @@
   .primary-btn:disabled{opacity:.55;cursor:default;}
 
   .attention-pulse{
-    text-align:center;font-weight:700;font-size:14.5px;color:var(--accent-soft);
-    padding:10px 14px;margin-bottom:16px;border-radius:12px;
+    text-align:left;font-weight:600;font-size:14px;line-height:1.55;
+    color:var(--accent-soft);
+    padding:14px 16px;margin-bottom:16px;border-radius:14px;
     background:rgba(232,53,79,.11);border:1px solid rgba(232,53,79,.38);
-    animation:attentionPulse 1.8s ease-in-out infinite;
+    animation:attentionGlow 2.4s ease-in-out infinite;
   }
-  @keyframes attentionPulse{0%,100%{opacity:1;}50%{opacity:.5;}}
+  .attention-pulse b{color:var(--accent-red);font-weight:800;}
+  /* Butun matn xiralashib turmasligi uchun — faqat chegara va soya
+     "nafas oladi", matn esa doim to'liq o'qiladigan bo'lib qoladi. */
+  @keyframes attentionGlow{
+    0%,100%{ box-shadow:0 0 0 0 rgba(232,53,79,.28); border-color:rgba(232,53,79,.38); }
+    50%    { box-shadow:0 0 0 6px rgba(232,53,79,0); border-color:rgba(232,53,79,.75); }
+  }
 
   /* Calendar */
   .calendar-card{
@@ -854,7 +861,7 @@ const T = {
     newsTitle:"Yangiliklar", noNews:"Hozircha yangiliklar yo'q", loading:"Yuklanmoqda…",
     vizaSubmitBtn:"Vizani biz orqali tekshirish",
     vizaSubmitText:"Anketa yoki pasport rasmingizni yuklang va telefon raqamingizni qoldiring — mutaxassisimiz tez orada siz bilan bog'lanadi.",
-    vizaAttention:"Iltimos, anketangizning aniq suratini yuboring",
+    vizaAttention:"📸 Iltimos, anketangizning suratini yuklang va <b>Rossiya hududidagi</b> yoki <b>Telegram, WhatsApp, Max</b> ilovalariga ulangan telefon raqamingizni qoldiring.<br><br>📞 Biz siz bilan albatta bog'lanamiz. Bu jarayon <b>ozroq vaqt olishi</b> mumkin — kutganingiz uchun tashakkur 🙂",
     yourPhone:"Telefon raqami", uploadPhoto:"Hujjat rasmini yuklash",
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     yourPhoneLabel:"Telefon raqamingiz",
@@ -961,7 +968,7 @@ const T = {
     newsTitle:"Новости", noNews:"Новостей пока нет", loading:"Загрузка…",
     vizaSubmitBtn:"Проверить визу через нас",
     vizaSubmitText:"Загрузите фотографию анкеты или паспорта и оставьте номер телефона — наш специалист свяжется с вами в ближайшее время.",
-    vizaAttention:"Пожалуйста, отправьте чёткое фото вашей анкеты",
+    vizaAttention:"📸 Пожалуйста, загрузите фото вашей анкеты и оставьте номер телефона, действующий <b>на территории России</b> или привязанный к <b>Telegram, WhatsApp, Max</b>.<br><br>📞 Мы обязательно свяжемся с вами. Это может занять <b>немного времени</b> — спасибо за ожидание 🙂",
     yourPhone:"Номер телефона", uploadPhoto:"Загрузить фото документа",
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     yourPhoneLabel:"Ваш номер телефона",
@@ -1068,7 +1075,7 @@ const T = {
     newsTitle:"Täzelikler", noNews:"Entek täzelik ýok", loading:"Ýüklenýär…",
     vizaSubmitBtn:"Wizany biziň arkaly barlamak",
     vizaSubmitText:"Anketa ýa-da pasport suratyňyzy ýükläň we telefon belgiňizi goýuň — hünärmenimiz siz bilen basym habarlaşar.",
-    vizaAttention:"Haýyş, anketaňyzyň anyk suratyny iberiň",
+    vizaAttention:"📸 Haýyş, anketaňyzyň suratyny ýükläň we <b>Russiýa çäginde</b> hereket edýän ýa-da <b>Telegram, WhatsApp, Max</b> goşundylaryna baglanan telefon belgiňizi goýuň.<br><br>📞 Biz siz bilen hökman habarlaşarys. Bu <b>biraz wagt alyp</b> biler — garaşanyňyz üçin sag boluň 🙂",
     yourPhone:"Telefon belgisi", uploadPhoto:"Resminama suratyny ýüklemek",
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     yourPhoneLabel:"Telefon belgiňiz",
@@ -2023,8 +2030,7 @@ function dropzone(prefix, label){
 function vizaFormScreen(){
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('vizaSubmitBtn'))}</h2>
-    <div class="section-text">${esc(t('vizaSubmitText'))}</div>
-    <div class="attention-pulse">${esc(t('vizaAttention'))}</div>
+    <div class="attention-pulse">${t('vizaAttention')}</div>
     <div class="field-label" style="margin-top:0">${esc(t('uploadPhoto'))}<span class="required-star">*</span></div>
     ${dropzone('viza', t('uploadPhoto'))}
     <div class="error-msg" id="vizaFileErr">${esc(t('required'))}</div>
