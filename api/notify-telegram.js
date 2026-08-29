@@ -91,9 +91,23 @@ async function tgSendPhoto(blob, caption, submissionId) {
   return data;
 }
 
-async function tgSendMessage(text, parseMode) {
+async function tgSendMessage(text, parseMode, submissionId) {
   const payload = { chat_id: ADMIN_CHAT_ID, text };
   if (parseMode) payload.parse_mode = parseMode;
+  // Agar so'rov ID berilgan bo'lsa — holat tugmalarini ("✅ Tayyor" /
+  // "⏳ Hali tayyor emas") shu xabarga biriktiramiz. Bu, ayniqsa, rasm
+  // keyinroq keladigan tezkor rejimda muhim: admin javobni rasmni
+  // kutmasdan, darhol belgilay oladi.
+  if (submissionId) {
+    payload.reply_markup = {
+      inline_keyboard: [
+        [
+          { text: "✅ Tayyor", callback_data: `status:${submissionId}:ready` },
+          { text: "⏳ Hali tayyor emas", callback_data: `status:${submissionId}:pending` },
+        ],
+      ],
+    };
+  }
   const r = await fetchWithTimeout(
     `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,
     {
@@ -125,10 +139,50 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { imageBase64, phone, submissionId, barcode } = req.body || {};
+    const { imageBase64, phone, submissionId, barcode, pendingPhoto, photoOnly } = req.body || {};
+
+    // ===== REJIM 1: "Rasm keyinroq" xabari =====
+    // Mijozning interneti sekin bo'lsa, rasm hali yuklanayotgan bo'ladi.
+    // Mijozni kuttirmaslik uchun adminga ENG MUHIM ma'lumot (telefon +
+    // barkod) DARHOL, holat tugmalari bilan yuboriladi. Rasm esa fonda
+    // tayyor bo'lgach, alohida yetkaziladi (REJIM 2).
+    if (pendingPhoto) {
+      const lines = [
+        `📥 <b>Yangi viza so'rovi</b>`,
+        `📞 Telefon: <code>${escapeHtml(phone) || "—"}</code>`
+      ];
+      if (barcode) lines.push(`📋 Ariza raqami (barkod):\n<code>${escapeHtml(barcode)}</code>`);
+      lines.push(`\n🖼 <i>Rasm yuklanmoqda — bir necha soniyada keladi.</i>`);
+      const ok = await tgSendMessage(lines.join("\n"), "HTML", submissionId).catch(() => false);
+      return res.status(200).json({ ok, method: "pending-text" });
+    }
+
     if (!imageBase64) return res.status(400).json({ error: "imageBase64 required" });
 
-    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${escapeHtml(phone) || "—"}`;
+    // ===== REJIM 2: faqat rasm (matni allaqachon yuborilgan) =====
+    if (photoOnly) {
+      const blobOnly = base64ToBlob(imageBase64);
+      const capOnly = `🖼 So'rov #${submissionId || "—"} uchun hujjat rasmi.`;
+      try {
+        // Tugmalar allaqachon oldingi (matnli) xabarda yuborilgan, shuning
+        // uchun bu yerda ularni takrorlamaymiz.
+        await tgSendPhoto(blobOnly, capOnly, null);
+        return res.status(200).json({ ok: true, method: "photo-only" });
+      } catch (e) {
+        const sent = await tgSendMessage(
+          `⚠️ So'rov #${submissionId || "—"} uchun rasm yuborilmadi (${String(e && e.message || e)}). Admin panelda ko'ring.`
+        ).catch(() => false);
+        return res.status(200).json({ ok: sent, method: "photo-only-failed" });
+      }
+    }
+
+    // ===== REJIM 3 (odatiy): rasm + matn birga =====
+    // Barkod rasmning O'Z tagiga (caption ichiga) ham yoziladi — shunda u
+    // albatta ko'rinadi. Undan tashqari, pastda ALOHIDA xabar ham ketadi,
+    // chunki caption ichidagi matnni Telegram'da bir bosishda nusxalab
+    // bo'lmaydi, alohida <code> xabarni esa bosib nusxalash mumkin.
+    const caption = `Viza tekshiruvi so'rovi.\nTelefon: ${escapeHtml(phone) || "—"}` +
+      (barcode ? `\nAriza raqami (barkod): ${escapeHtml(barcode)}` : "");
     const blob = base64ToBlob(imageBase64);
 
     let lastErr = null;
@@ -136,15 +190,14 @@ export default async function handler(req, res) {
       try {
         await tgSendPhoto(blob, caption, submissionId);
 
-        // OCR orqali (mijoz telefonida, bepul) avtomatik o'qilgan barkod —
-        // rasm TAGIDA, ALOHIDA xabar qilib yuboriladi, Telegram'ning <code>
-        // formatida — admin ustiga BIR MARTA teginsa, avtomatik nusxalanadi
-        // (qo'lda belgilashga hojat yo'q). Bu — best effort: agar bu
-        // qo'shimcha xabar ketmay qolsa ham, asosiy rasm va so'rov
-        // allaqachon saqlangan/yetkazilgan bo'ladi, hech narsa yo'qolmaydi.
+        // Nusxalash uchun qulay, alohida xabar: <code> formatidagi barkodga
+        // BIR MARTA teginsangiz — avtomatik nusxalanadi.
+        // MUHIM: bu AWAIT bilan kutiladi. Vercel javob qaytarilgan zahoti
+        // funksiyani DARHOL to'xtatadi, shuning uchun kutilmasa bu xabar
+        // yuborilmay qolar edi (aynan shu sabab avval barkod kelmagan).
         if (barcode) {
           const msg = `📋 <b>Ariza raqami (barkod):</b>\n<code>${escapeHtml(barcode)}</code>`;
-          tgSendMessage(msg, "HTML").catch(() => {});
+          await tgSendMessage(msg, "HTML").catch(() => {});
         }
 
         return res.status(200).json({ ok: true, method: "photo" });
