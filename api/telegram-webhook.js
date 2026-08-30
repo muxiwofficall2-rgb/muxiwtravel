@@ -175,6 +175,22 @@ async function saveVisaList(list) {
    VAPID_PUBLIC_KEY va VAPID_PRIVATE_KEY. Agar ular sozlanmagan bo'lsa,
    bu funksiya shunchaki jim o'tadi — qolgan hamma narsa avvalgidek
    ishlayveradi, hech narsa buzilmaydi. */
+/* VAPID kalitlarini muhit o'zgaruvchisidan xavfsiz o'qish.
+   Vercel formasiga nusxalaganda oxiriga ko'rinmas bo'shliq, yangi qator
+   yoki qo'shtirnoq qo'shilib qolishi juda tez-tez uchraydi — bu esa
+   "Vapid public key must be a URL safe Base 64" xatosiga olib keladi.
+   Shuning uchun kalitni ishlatishdan oldin har doim tozalaymiz. */
+function cleanVapidKey(raw) {
+  if (!raw) return "";
+  return String(raw)
+    .trim()
+    .replace(/^["']|["']$/g, "")   // tasodifan qo'shilgan qo'shtirnoqlar
+    .replace(/\s+/g, "")           // bo'shliq / yangi qator
+    .replace(/=+$/, "")            // oxiridagi "=" (base64 to'ldiruvchisi)
+    .replace(/\+/g, "-")           // standart base64 -> URL-safe
+    .replace(/\//g, "_");
+}
+
 function escapeHtml(s) {
   return String(s == null ? "" : s)
     .replace(/&/g, "&amp;")
@@ -218,8 +234,8 @@ async function savePushSubs(list) {
 }
 
 async function sendPushToClient(submissionId, status) {
-  const pub = process.env.VAPID_PUBLIC_KEY;
-  const priv = process.env.VAPID_PRIVATE_KEY;
+  const pub = cleanVapidKey(process.env.VAPID_PUBLIC_KEY);
+  const priv = cleanVapidKey(process.env.VAPID_PRIVATE_KEY);
   if (!pub || !priv) return { sent: false, reason: "VAPID kalitlari sozlanmagan" };
 
   const subs = await fetchPushSubs();
@@ -370,8 +386,8 @@ export default async function handler(req, res) {
        bildirishnomasi yuboradi va natijani aniq ko'rsatadi. */
     if (cmd === "/test_push" || cmd === "/sinov") {
       try {
-        const pub = process.env.VAPID_PUBLIC_KEY;
-        const priv = process.env.VAPID_PRIVATE_KEY;
+        const pub = cleanVapidKey(process.env.VAPID_PUBLIC_KEY);
+        const priv = cleanVapidKey(process.env.VAPID_PRIVATE_KEY);
         if (!pub || !priv) {
           await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
             text: "❌ <b>VAPID kalitlari sozlanmagan.</b>\n\nVercel → Settings → Environment Variables da <code>VAPID_PUBLIC_KEY</code> va <code>VAPID_PRIVATE_KEY</code> qo'shing va qayta deploy qiling." });
@@ -388,6 +404,16 @@ export default async function handler(req, res) {
         catch (e) {
           await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
             text: "❌ <b>web-push kutubxonasi topilmadi.</b>\n\n<code>package.json</code> faylini repo ildiziga joylashtirib, qayta deploy qiling." });
+          return res.status(200).end();
+        }
+        // Kalitlar to'g'ri shakldami — oldindan tekshiramiz, shunda xato
+        // bo'lsa aniq nima noto'g'riligi ko'rinadi (uzunlik, belgilar).
+        const keyInfo = `PUB uzunligi: ${pub.length} (87 kerak), PRIV uzunligi: ${priv.length} (43 kerak)`;
+        if (pub.length !== 87 || priv.length !== 43) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+            text: `❌ <b>VAPID kalitlari noto'g'ri.</b>\n\n<code>${escapeHtml(keyInfo)}</code>\n\n` +
+                  `Vercel → Settings → Environment Variables da kalitlarni qayta kiriting ` +
+                  `(bo'shliq yoki qo'shtirnoqsiz) va qayta deploy qiling.` });
           return res.status(200).end();
         }
         webpush.setVapidDetails("mailto:omadru@bk.ru", pub, priv);
