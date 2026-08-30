@@ -220,18 +220,19 @@ async function savePushSubs(list) {
 async function sendPushToClient(submissionId, status) {
   const pub = process.env.VAPID_PUBLIC_KEY;
   const priv = process.env.VAPID_PRIVATE_KEY;
-  if (!pub || !priv) return; // Sozlanmagan — jim o'tamiz.
+  if (!pub || !priv) return { sent: false, reason: "VAPID kalitlari sozlanmagan" };
 
   const subs = await fetchPushSubs();
   const entry = subs.find((s) => s.submissionId === submissionId);
-  if (!entry || !entry.subscription) return;
+  if (!entry || !entry.subscription) {
+    return { sent: false, reason: "mijoz bildirishnomaga obuna bo'lmagan" };
+  }
 
   let webpush;
   try {
     webpush = (await import("web-push")).default;
   } catch (e) {
-    console.warn("[telegram-webhook] web-push kutubxonasi topilmadi");
-    return;
+    return { sent: false, reason: "web-push kutubxonasi yo'q (package.json?)" };
   }
 
   webpush.setVapidDetails("mailto:omadru@bk.ru", pub, priv);
@@ -254,8 +255,20 @@ async function sendPushToClient(submissionId, status) {
   try {
     await webpush.sendNotification(entry.subscription, JSON.stringify(payload));
     console.log("[telegram-webhook] push sent for submission", submissionId);
+    return { sent: true, reason: "ok" };
   } catch (e) {
-    console.warn("[telegram-webhook] push send error:", e && e.statusCode, e && e.body);
+    const code = e && e.statusCode;
+    console.warn("[telegram-webhook] push send error:", code, e && e.body);
+    // 404/410 — obuna eskirgan (mijoz ilovani o'chirgan yoki ruxsatni
+    // bekor qilgan). Bunday yozuvlarni tozalab qo'yamiz.
+    if (code === 404 || code === 410) {
+      try {
+        const kept = subs.filter((s) => s.subscription.endpoint !== entry.subscription.endpoint);
+        await savePushSubs(kept);
+      } catch (_) {}
+      return { sent: false, reason: "obuna eskirgan (mijoz ilovani o'chirgan)" };
+    }
+    return { sent: false, reason: `xato ${code || ""} ${String(e && e.message || "").slice(0, 60)}` };
   }
 }
 
@@ -352,6 +365,63 @@ export default async function handler(req, res) {
     const cmd = msg.text.trim().toLowerCase().split(/[\s@]/)[0];
     const chatId = msg.chat && msg.chat.id;
 
+    /* Bildirishnoma tizimini TEKSHIRISH — butun jarayonni (anketa yuborish →
+       tayyor bosish) kutmasdan, darhol barcha obunachilarga sinov
+       bildirishnomasi yuboradi va natijani aniq ko'rsatadi. */
+    if (cmd === "/test_push" || cmd === "/sinov") {
+      try {
+        const pub = process.env.VAPID_PUBLIC_KEY;
+        const priv = process.env.VAPID_PRIVATE_KEY;
+        if (!pub || !priv) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+            text: "❌ <b>VAPID kalitlari sozlanmagan.</b>\n\nVercel → Settings → Environment Variables da <code>VAPID_PUBLIC_KEY</code> va <code>VAPID_PRIVATE_KEY</code> qo'shing va qayta deploy qiling." });
+          return res.status(200).end();
+        }
+        const subs = await fetchPushSubs();
+        if (!subs.length) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+            text: "⚠️ <b>Obunachi yo'q.</b>\n\nMijoz ilovada bildirishnomaga ruxsat bermagan. iPhone'da bu faqat sayt <b>\"Bosh ekranga qo'shish\"</b> orqali o'rnatilgandan keyin ishlaydi." });
+          return res.status(200).end();
+        }
+        let webpush;
+        try { webpush = (await import("web-push")).default; }
+        catch (e) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+            text: "❌ <b>web-push kutubxonasi topilmadi.</b>\n\n<code>package.json</code> faylini repo ildiziga joylashtirib, qayta deploy qiling." });
+          return res.status(200).end();
+        }
+        webpush.setVapidDetails("mailto:omadru@bk.ru", pub, priv);
+        const payload = JSON.stringify({
+          title: "🔔 Sinov bildirishnomasi",
+          body: "Bildirishnoma tizimi ishlayapti. Bu sinov xabari.",
+          url: "/", tag: "omad-test",
+        });
+        let ok = 0; const fails = [];
+        const dead = new Set();
+        await Promise.all(subs.map(async (s) => {
+          if (!s || !s.subscription) return;
+          try { await webpush.sendNotification(s.subscription, payload); ok++; }
+          catch (e) {
+            const c = e && e.statusCode;
+            if (c === 404 || c === 410) dead.add(s.subscription.endpoint);
+            fails.push(String(c || (e && e.message) || "?"));
+          }
+        }));
+        if (dead.size) {
+          const kept = subs.filter((s) => s.subscription && !dead.has(s.subscription.endpoint));
+          await savePushSubs(kept);
+        }
+        await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+          text: `📲 <b>Sinov natijasi</b>\n\n✅ Yuborildi: <b>${ok}</b> ta\n❌ Xato: <b>${fails.length}</b> ta` +
+                (dead.size ? `\n🧹 Eskirgan obuna tozalandi: <b>${dead.size}</b> ta` : "") +
+                (fails.length ? `\n\n<i>Xato kodlari: ${escapeHtml(fails.slice(0,5).join(", "))}</i>` : "") });
+        return res.status(200).end();
+      } catch (e) {
+        await tg("sendMessage", { chat_id: chatId, text: "Xatolik: " + String(e && e.message) });
+        return res.status(200).end();
+      }
+    }
+
     if (cmd === "/tayyor" || cmd === "/kutilmoqda" || cmd === "/tozalash" || cmd === "/holat" || cmd === "/start") {
       try {
         const list = await fetchVisaList();
@@ -370,7 +440,8 @@ export default async function handler(req, res) {
               `<b>Buyruqlar:</b>\n` +
               `/tayyor — tayyorlar ro'yxati\n` +
               `/kutilmoqda — javob berilmaganlar\n` +
-              `/tozalash — tayyorlarni o'chirish`,
+              `/tozalash — tayyorlarni o'chirish\n` +
+              `/test_push — bildirishnomani sinash`,
           });
           return res.status(200).end();
         }
@@ -546,11 +617,27 @@ export default async function handler(req, res) {
       // ===== MIJOZGA AVTOMATIK BILDIRISHNOMA =====
       // Holat saqlangach, mijozning telefoniga push-bildirishnoma
       // yuboriladi — u saytni ochib turmagan bo'lsa ham ko'radi.
-      // Bu SMS o'rnini bosadi va butunlay bepul.
+      // MUHIM: bu AWAIT bilan kutiladi. Vercel javob qaytarilgan zahoti
+      // funksiyani DARHOL to'xtatadi, shuning uchun kutilmasa bildirishnoma
+      // umuman yuborilmay qolar edi (aynan shu sabab avval kelmagan).
+      let pushResult = { sent: false, reason: "skipped" };
       if (saved) {
-        sendPushToClient(id, status).catch((err) =>
-          console.warn("[telegram-webhook] push notification failed:", err && err.message)
-        );
+        pushResult = await sendPushToClient(id, status);
+        console.log("[telegram-webhook] push result:", pushResult);
+      }
+
+      // Natijani xabar ostiga qo'shamiz — admin bildirishnoma mijozga
+      // yetib borgan-bormaganini DARHOL ko'radi, taxmin qilib o'tirmaydi.
+      if (cq.message && saved) {
+        const pushLine = pushResult.sent
+          ? "\n📲 Mijozga bildirishnoma yuborildi ✓"
+          : `\n📵 Bildirishnoma yuborilmadi (${pushResult.reason})`;
+        await tg(isPhotoMsg ? "editMessageCaption" : "editMessageText", {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          [isPhotoMsg ? "caption" : "text"]: finalText + pushLine,
+          reply_markup: cq.message.reply_markup,
+        }).catch(() => {});
       }
 
       console.log("[telegram-webhook] status update complete:", { id, status, saved });
