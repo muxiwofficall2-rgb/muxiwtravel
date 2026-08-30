@@ -175,6 +175,13 @@ async function saveVisaList(list) {
    VAPID_PUBLIC_KEY va VAPID_PRIVATE_KEY. Agar ular sozlanmagan bo'lsa,
    bu funksiya shunchaki jim o'tadi — qolgan hamma narsa avvalgidek
    ishlayveradi, hech narsa buzilmaydi. */
+function escapeHtml(s) {
+  return String(s == null ? "" : s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+}
+
 async function fetchPushSubs() {
   const { url, token } = redisConfig();
   if (!url || !token) return [];
@@ -188,6 +195,25 @@ async function fetchPushSubs() {
     return JSON.parse(data.result) || [];
   } catch (e) {
     return [];
+  }
+}
+
+async function savePushSubs(list) {
+  const { url, token } = redisConfig();
+  if (!url || !token) return false;
+  try {
+    const r = await fetchWithTimeout(
+      `${url}/set/push_subs`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" },
+        body: JSON.stringify(list),
+      },
+      6000
+    );
+    return r.ok;
+  } catch (e) {
+    return false;
   }
 }
 
@@ -313,6 +339,150 @@ export default async function handler(req, res) {
 
   const update = req.body;
   const cq = update && update.callback_query;
+  const msg = update && update.message;
+
+  /* ===== BOT BUYRUQLARI =====
+     Admin Telegram'dan turib butun oqimni boshqara oladi:
+       /tayyor      — tayyor bo'lgan so'rovlar ro'yxati
+       /kutilmoqda  — hali javob berilmagan so'rovlar ro'yxati
+       /tozalash    — FAQAT tayyor bo'lganlarni hamma joydan o'chirish
+     "Kutilmoqda" ro'yxatida tayyorlar KO'RINMAYDI — ular avtomatik
+     chiqib ketadi, shu tufayli ro'yxat doim faqat qolgan ishni ko'rsatadi. */
+  if (msg && typeof msg.text === "string" && msg.text.startsWith("/")) {
+    const cmd = msg.text.trim().toLowerCase().split(/[\s@]/)[0];
+    const chatId = msg.chat && msg.chat.id;
+
+    if (cmd === "/tayyor" || cmd === "/kutilmoqda" || cmd === "/tozalash" || cmd === "/holat" || cmd === "/start") {
+      try {
+        const list = await fetchVisaList();
+        const ready = list.filter((v) => v.status === "ready");
+        const waiting = list.filter((v) => v.status !== "ready");
+
+        if (cmd === "/start" || cmd === "/holat") {
+          await tg("sendMessage", {
+            chat_id: chatId,
+            parse_mode: "HTML",
+            text:
+              `📊 <b>Umumiy holat</b>\n\n` +
+              `✅ Tayyor: <b>${ready.length}</b>\n` +
+              `⏳ Kutilmoqda: <b>${waiting.length}</b>\n` +
+              `📁 Jami: <b>${list.length}</b>\n\n` +
+              `<b>Buyruqlar:</b>\n` +
+              `/tayyor — tayyorlar ro'yxati\n` +
+              `/kutilmoqda — javob berilmaganlar\n` +
+              `/tozalash — tayyorlarni o'chirish`,
+          });
+          return res.status(200).end();
+        }
+
+        if (cmd === "/tozalash") {
+          if (!ready.length) {
+            await tg("sendMessage", { chat_id: chatId, text: "O'chirish uchun tayyor so'rov yo'q." });
+            return res.status(200).end();
+          }
+          // Xavfsizlik: darhol o'chirmaymiz — avval tasdiq so'raymiz.
+          await tg("sendMessage", {
+            chat_id: chatId,
+            parse_mode: "HTML",
+            text:
+              `🗑 <b>${ready.length} ta TAYYOR so'rov o'chiriladi.</b>\n\n` +
+              `Ular mijozlarning ilovasidan ham yo'qoladi.\n` +
+              `⏳ Kutilmoqda holatidagilarga <b>tegilmaydi</b>.\n\n` +
+              `Tasdiqlaysizmi?`,
+            reply_markup: {
+              inline_keyboard: [[
+                { text: "🗑 Ha, o'chirilsin", callback_data: "purge:ready" },
+                { text: "✖️ Bekor qilish", callback_data: "purge:cancel" },
+              ]],
+            },
+          });
+          return res.status(200).end();
+        }
+
+        const items = cmd === "/tayyor" ? ready : waiting;
+        const title = cmd === "/tayyor" ? "✅ <b>Tayyor so'rovlar</b>" : "⏳ <b>Javob berilmaganlar</b>";
+        if (!items.length) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML", text: `${title}\n\nRo'yxat bo'sh.` });
+          return res.status(200).end();
+        }
+        // Telegram bitta xabarda ~4096 belgi qabul qiladi — uzun ro'yxatni
+        // bo'lib yuboramiz, shunda hech narsa kesilib qolmaydi.
+        const lines = items.map((v, i) => {
+          const bc = v.barcode ? `\n   📋 <code>${escapeHtml(v.barcode)}</code>` : "";
+          return `${i + 1}. 📞 <code>${escapeHtml(v.phone || "—")}</code>${bc}\n   🕒 ${escapeHtml(v.date || "")}`;
+        });
+        let chunk = `${title} — ${items.length} ta\n\n`;
+        for (const line of lines) {
+          if (chunk.length + line.length > 3500) {
+            await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML", text: chunk });
+            chunk = "";
+          }
+          chunk += line + "\n\n";
+        }
+        if (chunk.trim()) {
+          await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML", text: chunk });
+        }
+        return res.status(200).end();
+      } catch (e) {
+        console.error("[telegram-webhook] command error:", e && e.message);
+        await tg("sendMessage", { chat_id: chatId, text: "Xatolik yuz berdi, qayta urinib ko'ring." });
+        return res.status(200).end();
+      }
+    }
+  }
+
+  /* ===== TAYYORLARNI O'CHIRISH (tasdiqlangandan keyin) ===== */
+  if (cq && cq.data && cq.data.startsWith("purge:")) {
+    const action = cq.data.split(":")[1];
+    await tg("answerCallbackQuery", { callback_query_id: cq.id });
+
+    if (action === "cancel") {
+      if (cq.message) {
+        await tg("editMessageText", {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          text: "✖️ Bekor qilindi. Hech narsa o'chirilmadi.",
+        });
+      }
+      return res.status(200).end();
+    }
+
+    try {
+      const list = await fetchVisaList();
+      const ready = list.filter((v) => v.status === "ready");
+      // FAQAT tayyor bo'lganlar o'chiriladi — qolganlariga tegilmaydi.
+      const kept = list.filter((v) => v.status !== "ready");
+      const saved = await saveVisaList(kept);
+
+      // O'chirilganlarning push obunalarini ham tozalaymiz — keraksiz
+      // yozuvlar to'planib qolmasligi uchun.
+      if (saved && ready.length) {
+        try {
+          const removedIds = new Set(ready.map((v) => v.id));
+          const subs = await fetchPushSubs();
+          const keptSubs = subs.filter((s) => !removedIds.has(s.submissionId));
+          if (keptSubs.length !== subs.length) await savePushSubs(keptSubs);
+        } catch (e) {
+          console.warn("[telegram-webhook] push subs cleanup failed:", e && e.message);
+        }
+      }
+
+      if (cq.message) {
+        await tg("editMessageText", {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          parse_mode: "HTML",
+          text: saved
+            ? `🗑 <b>${ready.length} ta tayyor so'rov o'chirildi.</b>\n\n⏳ Qolgan: <b>${kept.length}</b> ta`
+            : "⚠️ O'chirishda xatolik yuz berdi, qayta urinib ko'ring.",
+        });
+      }
+      console.log("[telegram-webhook] purge ready:", { removed: ready.length, kept: kept.length, saved });
+    } catch (e) {
+      console.error("[telegram-webhook] purge error:", e && e.message);
+    }
+    return res.status(200).end();
+  }
 
   if (cq && cq.data && cq.data.startsWith("status:")) {
     const ack = await tg("answerCallbackQuery", {
