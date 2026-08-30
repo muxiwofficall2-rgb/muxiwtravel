@@ -941,7 +941,12 @@ const T = {
     stepSent:"Yuborildi", stepReview:"Ko'rib chiqilmoqda", stepDone:"Tayyor",
     pushEnableTitle:"Bildirishnomalarni yoqing", pushEnableSub:"Yangi e'lonlar telefoningizga darhol keladi — bosing",
     pushOnTitle:"Bildirishnomalar yoqilgan", pushOnSub:"Yangi e'lonlardan darhol xabardor bo'lasiz ✓",
-    pushFailed:"Yoqilmadi — telefon sozlamalaridan ruxsat bering",
+    pushFailed:"Yoqilmadi — qayta urinib ko'ring",
+    pushWorking:"Yoqilmoqda…",
+    pushDenied:"Ruxsat berilmagan — telefon sozlamalaridan ruxsat bering",
+    pushDismissed:"Ruxsat berilmadi — qayta bosing va \"Ruxsat berish\"ni tanlang",
+    pushNeedInstall:"Buning uchun saytni \"Bosh ekranga qo'shish\" orqali o'rnating",
+    pushServerError:"Server javob bermadi — biroz keyin urinib ko'ring",
     photoPreparing:"Rasm tayyorlanmoqda…", photoUploading:"Rasm yuklanmoqda…",
     photoReady:"Rasm tayyor ✓", photoFailed:"Rasm yuklanmadi — bosib qayta urinib ko'ring",
     sending:"Yuborilmoqda…",
@@ -1049,7 +1054,12 @@ const T = {
     stepSent:"Отправлено", stepReview:"На рассмотрении", stepDone:"Готово",
     pushEnableTitle:"Включите уведомления", pushEnableSub:"Новые объявления придут сразу на телефон — нажмите",
     pushOnTitle:"Уведомления включены", pushOnSub:"Вы сразу узнаете о новых объявлениях ✓",
-    pushFailed:"Не удалось — разрешите в настройках телефона",
+    pushFailed:"Не удалось — попробуйте ещё раз",
+    pushWorking:"Включаем…",
+    pushDenied:"Доступ запрещён — разрешите в настройках телефона",
+    pushDismissed:"Разрешение не дано — нажмите ещё раз и выберите \"Разрешить\"",
+    pushNeedInstall:"Для этого установите сайт через \"На экран «Домой»\"",
+    pushServerError:"Сервер не ответил — попробуйте позже",
     photoPreparing:"Фото подготавливается…", photoUploading:"Фото загружается…",
     photoReady:"Фото готово ✓", photoFailed:"Фото не загрузилось — нажмите, чтобы повторить",
     sending:"Отправляется…",
@@ -1157,7 +1167,12 @@ const T = {
     stepSent:"Iberildi", stepReview:"Seredilýär", stepDone:"Taýýar",
     pushEnableTitle:"Habarnamalary açyň", pushEnableSub:"Täze bildirişler telefonyňyza derrew geler — basyň",
     pushOnTitle:"Habarnamalar açyk", pushOnSub:"Täze bildirişlerden derrew habarly bolarsyňyz ✓",
-    pushFailed:"Açylmady — telefon sazlamalaryndan rugsat beriň",
+    pushFailed:"Açylmady — gaýtadan synanyşyň",
+    pushWorking:"Açylýar…",
+    pushDenied:"Rugsat berilmedi — telefon sazlamalaryndan rugsat beriň",
+    pushDismissed:"Rugsat berilmedi — gaýtadan basyp \"Rugsat bermek\"i saýlaň",
+    pushNeedInstall:"Munuň üçin sahypany \"Baş ekrana goşmak\" arkaly ornaşdyryň",
+    pushServerError:"Server jogap bermedi — biraz soň synanyşyň",
     photoPreparing:"Surat taýýarlanýar…", photoUploading:"Surat ýüklenýär…",
     photoReady:"Surat taýýar ✓", photoFailed:"Surat ýüklenmedi — gaýtadan synanyşmak üçin basyň",
     sending:"Iberilýär…",
@@ -1352,45 +1367,84 @@ function urlBase64ToUint8Array(base64String){
   return out;
 }
 async function subscribeForVisaUpdates(submissionId){
-  return subscribeToPush(submissionId);
+  const r = await subscribeToPush(submissionId);
+  return !!(r && r.ok);
 }
 
 /* Push obunasi. `submissionId` berilsa — o'sha viza so'roviga bog'lanadi
    (holat o'zgarganda shaxsiy xabar keladi). Berilmasa ham obuna saqlanadi
-   va UMUMIY e'lonlar (yangiliklar) shu qurilmaga yetib boradi. */
+   va UMUMIY e'lonlar (yangiliklar) shu qurilmaga yetib boradi.
+
+   MUHIM: har bir qadamda vaqt chegarasi bor — agar biror narsa javob
+   bermasa, tugma "…" holatida CHEKSIZ qotib qolmaydi, balki aniq sabab
+   qaytariladi. Natija: { ok: true } yoki { ok: false, reason: "..." } */
+function withTimeout(promise, ms, reasonOnTimeout){
+  return Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(()=> reject(new Error(reasonOnTimeout)), ms))
+  ]);
+}
 async function subscribeToPush(submissionId){
   try{
-    if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
-    if(typeof Notification === "undefined") return false;
-    const perm = await Notification.requestPermission();
-    if(perm !== "granted") return false;
+    if(!("serviceWorker" in navigator)) return { ok:false, reason:"noSW" };
+    if(!("PushManager" in window)) return { ok:false, reason:"noPush" };
+    if(typeof Notification === "undefined") return { ok:false, reason:"noNotif" };
 
-    const reg = await navigator.serviceWorker.ready;
+    // iOS'da bu faqat sayt "Bosh ekranga qo'shish" orqali o'rnatilgan
+    // bo'lsa ishlaydi — aks holda brauzer buni butunlay rad etadi.
+    if(Notification.permission === "denied") return { ok:false, reason:"denied" };
+
+    const perm = await withTimeout(Notification.requestPermission(), 30000, "permTimeout");
+    if(perm !== "granted") return { ok:false, reason: perm === "denied" ? "denied" : "dismissed" };
+
+    // Service Worker ro'yxatdan o'tmagan bo'lsa, `ready` CHEKSIZ kutadi —
+    // shuning uchun avval o'zimiz ro'yxatdan o'tkazamiz, so'ng vaqt
+    // chegarasi bilan kutamiz.
+    let reg = null;
+    try{
+      reg = await withTimeout(navigator.serviceWorker.register("/sw.js"), 6000, "swRegTimeout");
+    }catch(e){ /* allaqachon ro'yxatdan o'tgan bo'lishi mumkin */ }
+    try{
+      reg = await withTimeout(navigator.serviceWorker.ready, 6000, "swReadyTimeout");
+    }catch(e){
+      return { ok:false, reason:"swNotReady" };
+    }
+    if(!reg || !reg.pushManager) return { ok:false, reason:"noPushManager" };
+
     let sub = await reg.pushManager.getSubscription();
     if(!sub){
-      sub = await reg.pushManager.subscribe({
-        userVisibleOnly: true,
-        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
-      });
+      try{
+        sub = await withTimeout(reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        }), 12000, "subscribeTimeout");
+      }catch(e){
+        return { ok:false, reason:"subscribeFailed" };
+      }
     }
+
     const res = await request("/api/push-subscribe", {
       method:"POST", headers:{ "Content-Type":"application/json" },
       body: JSON.stringify({ submissionId: submissionId || null, subscription: sub.toJSON ? sub.toJSON() : sub })
-    }, { timeout:10000, attempts:2 });
+    }, { timeout:12000, attempts:2 });
     const data = await res.json().catch(()=> null);
-    if(data && data.ok) store.set("omad_push_on", "1");
-    return !!(data && data.ok);
+    if(data && data.ok){
+      store.set("omad_push_on", "1");
+      return { ok:true };
+    }
+    return { ok:false, reason:"serverError" };
   }catch(e){
-    // Bildirishnoma ishlamasa ham, asosiy jarayonga hech qanday ta'sir yo'q.
-    return false;
+    return { ok:false, reason:"unknown" };
   }
 }
-/* Obuna holatini tekshirish — tugmani to'g'ri ko'rsatish uchun. */
+/* Obuna holatini tekshirish — tugmani to'g'ri ko'rsatish uchun.
+   Bu ham hech qachon qotib qolmasligi kerak (vaqt chegarasi bilan). */
 async function isPushSubscribed(){
   try{
     if(!("serviceWorker" in navigator) || !("PushManager" in window)) return false;
     if(typeof Notification === "undefined" || Notification.permission !== "granted") return false;
-    const reg = await navigator.serviceWorker.ready;
+    const reg = await withTimeout(navigator.serviceWorker.ready, 6000, "t").catch(()=> null);
+    if(!reg || !reg.pushManager) return false;
     const sub = await reg.pushManager.getSubscription();
     return !!sub;
   }catch(e){ return false; }
@@ -3185,26 +3239,43 @@ function bindNews(){
     const supported = ("serviceWorker" in navigator) && ("PushManager" in window) && (typeof Notification !== "undefined");
     if(supported){
       isPushSubscribed().then(on=>{
+        cta.style.display = "flex";
         if(on){
-          cta.style.display = "flex";
           cta.classList.add("on");
           document.getElementById("pushCtaTitle").textContent = t('pushOnTitle');
           document.getElementById("pushCtaSub").textContent = t('pushOnSub');
-        }else{
-          cta.style.display = "flex";
-          cta.addEventListener("click", async ()=>{
-            const sub = document.getElementById("pushCtaSub");
-            sub.textContent = "…";
-            const ok = await subscribeToPush(null);
-            if(ok){
-              cta.classList.add("on");
-              document.getElementById("pushCtaTitle").textContent = t('pushOnTitle');
-              sub.textContent = t('pushOnSub');
-            }else{
-              sub.textContent = t('pushFailed');
-            }
-          });
+          return;
         }
+        let working = false;
+        cta.addEventListener("click", async ()=>{
+          if(working || cta.classList.contains("on")) return;
+          working = true;
+          const subEl = document.getElementById("pushCtaSub");
+          subEl.textContent = t('pushWorking');
+          const r = await subscribeToPush(null);
+          working = false;
+          if(r && r.ok){
+            cta.classList.add("on");
+            document.getElementById("pushCtaTitle").textContent = t('pushOnTitle');
+            subEl.textContent = t('pushOnSub');
+          }else{
+            // Aniq sababni ko'rsatamiz — mijoz nima qilish kerakligini biladi,
+            // "…" holatida qotib qolmaydi.
+            const reason = (r && r.reason) || "unknown";
+            const map = {
+              denied: 'pushDenied',
+              dismissed: 'pushDismissed',
+              swNotReady: 'pushNeedInstall',
+              noPush: 'pushNeedInstall',
+              noNotif: 'pushNeedInstall',
+              noSW: 'pushNeedInstall',
+              noPushManager: 'pushNeedInstall',
+              subscribeFailed: 'pushNeedInstall',
+              serverError: 'pushServerError'
+            };
+            subEl.textContent = t(map[reason] || 'pushFailed');
+          }
+        });
       });
     }
   }
