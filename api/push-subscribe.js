@@ -62,15 +62,27 @@ export default async function handler(req, res) {
 
   try {
     const { submissionId, subscription } = req.body || {};
-    if (!submissionId || !subscription || !subscription.endpoint) {
-      return res.status(400).json({ error: "submissionId and subscription required" });
+    if (!subscription || !subscription.endpoint) {
+      return res.status(400).json({ error: "subscription required" });
     }
 
     const list = (await redisGet(SUB_KEY)) || [];
-    // Bir xil so'rov uchun takroriy obunani almashtiramiz (yangisi ustun).
-    const filtered = list.filter((s) => s.submissionId !== submissionId);
+    // Bir xil qurilmaning takroriy obunasini almashtiramiz (yangisi ustun).
+    // Qurilma "endpoint" bo'yicha aniqlanadi — shu tufayli bitta telefon
+    // ro'yxatda bir marta turadi, hatto bir necha marta obuna bo'lsa ham.
+    const filtered = list.filter(
+      (s) => !s.subscription || s.subscription.endpoint !== subscription.endpoint
+    );
+    // Agar bu qurilma avval biror viza so'roviga bog'langan bo'lsa va
+    // hozir umumiy (submissionId'siz) obuna kelayotgan bo'lsa — eski
+    // bog'lanishni saqlab qolamiz, aks holda holat xabari yo'qolardi.
+    const prev = list.find(
+      (s) => s.subscription && s.subscription.endpoint === subscription.endpoint
+    );
+    const keptId = submissionId || (prev && prev.submissionId) || null;
+
     filtered.unshift({
-      submissionId,
+      submissionId: keptId,
       subscription,
       created: Date.now(),
     });
