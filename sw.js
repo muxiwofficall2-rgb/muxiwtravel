@@ -53,6 +53,13 @@ self.addEventListener("notificationclick", (event) => {
     self.clients.matchAll({ type: "window", includeUncontrolled: true }).then((list) => {
       for (const client of list) {
         if ("focus" in client) {
+          // Ilova allaqachon ochiq bo'lsa — uni qayta yuklamasdan, to'g'ridan-
+          // to'g'ri kerakli ekranga o'tkazish uchun xabar yuboramiz (bu
+          // tezroq va mijozning joriy ishini buzmaydi). Agar sayt bu
+          // xabarni qabul qila olmasa, oddiy o'tish (navigate) ishlaydi.
+          try {
+            client.postMessage({ type: "OPEN_SCREEN", url: targetUrl });
+          } catch (e) {}
           client.navigate(targetUrl).catch(() => {});
           return client.focus();
         }
