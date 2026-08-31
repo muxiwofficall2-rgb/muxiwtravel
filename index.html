@@ -608,6 +608,11 @@
   .push-cta-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
   .push-cta-text b{font-size:14px;color:var(--text);}
   .push-cta-text span{font-size:12px;line-height:1.4;color:var(--text-dim);}
+  .push-cta-diag{
+    margin-top:5px;font-size:10.5px;line-height:1.4;
+    font-family:ui-monospace,Consolas,monospace;
+    color:var(--accent-red);opacity:.9;word-break:break-word;
+  }
   .steps-row{
     display:flex;align-items:flex-start;justify-content:space-between;
     margin:0 0 14px;gap:2px;
@@ -2368,6 +2373,7 @@ function newsScreen(){
       <span class="push-cta-text">
         <b id="pushCtaTitle">${esc(t('pushEnableTitle'))}</b>
         <span id="pushCtaSub">${esc(t('pushEnableSub'))}</span>
+        <span class="push-cta-diag" id="pushCtaDiag" style="display:none"></span>
       </span>
     </button>
     <div id="newsBox"><div class="footer-note">${esc(t('loading'))}</div></div>
@@ -3274,6 +3280,22 @@ function bindNews(){
               serverError: 'pushServerError'
             };
             subEl.textContent = t(map[reason] || 'pushFailed');
+            // TASHXIS: aynan nima ishlamayotganini ko'rsatamiz. Bu qator
+            // faqat muammo bo'lganda chiqadi va sababni aniqlashga yordam
+            // beradi (masalan iOS'da ilova o'rnatilganmi yoki yo'qmi).
+            const diagEl = document.getElementById("pushCtaDiag");
+            if(diagEl){
+              const standalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+              const parts = [
+                "sabab=" + reason,
+                "ilova=" + (standalone ? "HA" : "YO'Q"),
+                "ruxsat=" + (typeof Notification !== "undefined" ? Notification.permission : "yo'q"),
+                "SW=" + (("serviceWorker" in navigator) ? "bor" : "yo'q"),
+                "Push=" + (("PushManager" in window) ? "bor" : "yo'q")
+              ];
+              diagEl.textContent = parts.join(" · ");
+              diagEl.style.display = "block";
+            }
           }
         });
       });
@@ -3499,6 +3521,38 @@ function bindAdmin(){
 /* ================== ISHGA TUSHIRISH ================== */
 applyTheme();
 navStack.push({ name:"home", opts:{} });
+
+/* Agar sayt push-bildirishnoma orqali ochilgan bo'lsa (masalan
+   "/#myVisaStatus"), mijozni to'g'ridan-to'g'ri kerakli ekranga olib
+   boramiz — u bosh sahifadan qidirib yurmasin. Bosh sahifa navStack'da
+   qolgani uchun "Orqaga" tugmasi ham odatdagidek ishlayveradi. */
+/* Ilova ALLAQACHON ochiq bo'lganda push bosilsa — Service Worker shu
+   xabarni yuboradi va biz kerakli ekranga darhol o'tamiz (sahifani qayta
+   yuklamasdan). */
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.addEventListener("message", (event)=>{
+    const d = event.data;
+    if(!d || d.type !== "OPEN_SCREEN" || !d.url) return;
+    const m = String(d.url).match(/#(\w+)/);
+    if(!m) return;
+    const allowed = ["myVisaStatus", "viza", "vizaForm", "news", "addresses", "help"];
+    if(allowed.indexOf(m[1]) === -1) return;
+    go(m[1], {});
+  });
+}
+
+(function openFromHash(){
+  const raw = (location.hash || "").replace(/^#/, "").trim();
+  if(!raw) return;
+  // Faqat ruxsat etilgan ekranlar — tasodifiy/zararli qiymatlar o'tmaydi.
+  const allowed = ["myVisaStatus", "viza", "vizaForm", "news", "addresses", "help"];
+  if(allowed.indexOf(raw) === -1) return;
+  navStack.push({ name: raw, opts: {} });
+  // Manzildagi belgini tozalaymiz, shunda sahifa yangilanganda takror
+  // o'sha ekranga sakramaydi.
+  try{ history.replaceState(null, "", location.pathname + location.search); }catch(e){}
+})();
+
 render();
 </script>
 </body>
