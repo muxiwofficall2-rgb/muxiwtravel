@@ -596,6 +596,33 @@
     backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
   }
 
+  .notary-list{display:flex;flex-direction:column;gap:2px;margin-bottom:6px;}
+  .notary-item{
+    display:flex;align-items:flex-start;gap:11px;padding:11px 12px;
+    border-radius:12px;cursor:pointer;
+    background:var(--glass);border:1px solid var(--glass-border);
+    margin-bottom:7px;transition:border-color .15s,background .15s;
+  }
+  .notary-item input{position:absolute;opacity:0;width:0;height:0;}
+  .notary-box{
+    width:21px;height:21px;border-radius:6px;flex-shrink:0;margin-top:1px;
+    border:2px solid var(--glass-border);background:var(--surface);
+    display:flex;align-items:center;justify-content:center;
+    transition:background .15s,border-color .15s;
+  }
+  .notary-box::after{
+    content:"✓";color:#fff;font-size:13px;font-weight:900;opacity:0;transition:opacity .12s;
+  }
+  .notary-item input:checked ~ .notary-box{background:var(--accent-red);border-color:var(--accent-red);}
+  .notary-item input:checked ~ .notary-box::after{opacity:1;}
+  .notary-item input:checked ~ .notary-name{color:var(--text);font-weight:700;}
+  .notary-item:has(input:checked){border-color:rgba(232,53,79,.45);background:rgba(232,53,79,.07);}
+  .notary-name{font-size:13.5px;line-height:1.45;color:var(--text-dim);flex:1;}
+  .notary-summary{
+    margin:0;font-size:13px;line-height:1.55;color:var(--text);
+    white-space:pre-wrap;word-break:break-word;font-family:inherit;
+  }
+
   .push-cta{
     display:flex;align-items:center;gap:12px;width:100%;
     margin:0 0 16px;padding:13px 14px;border-radius:16px;text-align:left;
@@ -943,6 +970,23 @@ const T = {
     phoneHint:"Agar Telegram yoki WhatsApp raqamingiz ulangan bo'lsa, iltimos o'sha raqamni kiriting.",
     yourPhoneLabel:"Telefon raqamingiz",
     anketaLabel:"Anketa", addAnketa:"Yana anketa qo'shish",
+    notaryCatPassport:"Pasport tarjimasi", notaryCatSoglasie:"Rozilik (soglasiye)",
+    notaryCatStraxovka:"Sug'urta", notaryCatOther:"Boshqa masala",
+    notaryPassportHint:"🛂 Sizga qaysi davlat pasportini tarjima qilish kerak? Iltimos, belgilab keting. Agar ro'yxatda bo'lmasa — <b>qo'lda kiriting</b>.",
+    notarySoglasieHint:"📝 Sizga qaysi rozilik (soglasiye) kerak? Iltimos, belgilang. Ro'yxatda bo'lmasa — <b>qo'lda kiriting</b>.",
+    notaryStraxovkaHint:"🛡 Qanday sug'urta kerak? Iltimos, tanlab yuboring. Ro'yxatda bo'lmasa — <b>qo'lda kiriting</b>.",
+    notaryOtherHint:"💬 Siz <b>boshqa masalalar</b> bo'limidasiz. Sizga qanday yordam bera olamiz? Iltimos, qo'lda kiriting. So'rovdan so'ng ozroq kuting — mutaxassisimiz siz bilan tez orada bog'lanadi.",
+    notaryPassUz:"O'zbekiston pasporti tarjimasi", notaryPassTj:"Tojikiston pasporti tarjimasi",
+    notaryPassKg:"Qirg'iziston pasporti tarjimasi", notaryPassTm:"Turkmaniston pasporti tarjimasi",
+    notaryPassKz:"Qozog'iston pasporti tarjimasi",
+    notarySoglChild:"Bolani boshqa inson bilan chet elga yuborish uchun rozilik",
+    notarySoglHousing:"Uy-joy va davlat organlari uchun rozilik",
+    notaryManualOptional:"Ro'yxatda yo'q bo'lsa — qo'lda kiriting (ixtiyoriy)",
+    notaryManualRequired:"Savolingizni yozing",
+    notaryManualPh:"Bu yerga yozishingiz mumkin…",
+    notaryManualPhRequired:"Sizga qanday yordam kerak? Batafsil yozing…",
+    notaryChoose:"Tanlangan",
+    notaryPickOne:"Kamida bittasini belgilang yoki qo'lda kiriting",
     stepSent:"Yuborildi", stepReview:"Ko'rib chiqilmoqda", stepDone:"Tayyor",
     pushEnableTitle:"Bildirishnomalarni yoqing", pushEnableSub:"Yangi e'lonlar telefoningizga darhol keladi — bosing",
     pushOnTitle:"Bildirishnomalar yoqilgan", pushOnSub:"Yangi e'lonlardan darhol xabardor bo'lasiz ✓",
@@ -1056,6 +1100,23 @@ const T = {
     phoneHint:"Если у вас привязан номер Telegram или WhatsApp, пожалуйста, укажите именно его.",
     yourPhoneLabel:"Ваш номер телефона",
     anketaLabel:"Анкета", addAnketa:"Добавить ещё анкету",
+    notaryCatPassport:"Перевод паспорта", notaryCatSoglasie:"Согласие",
+    notaryCatStraxovka:"Страховка", notaryCatOther:"Другой вопрос",
+    notaryPassportHint:"🛂 Паспорт какой страны нужно перевести? Пожалуйста, отметьте. Если в списке нет — <b>впишите вручную</b>.",
+    notarySoglasieHint:"📝 Какое согласие вам нужно? Пожалуйста, отметьте. Если в списке нет — <b>впишите вручную</b>.",
+    notaryStraxovkaHint:"🛡 Какая страховка нужна? Пожалуйста, выберите. Если в списке нет — <b>впишите вручную</b>.",
+    notaryOtherHint:"💬 Вы в разделе <b>другие вопросы</b>. Чем мы можем помочь? Пожалуйста, опишите. После заявки немного подождите — наш специалист свяжется с вами в ближайшее время.",
+    notaryPassUz:"Перевод паспорта Узбекистана", notaryPassTj:"Перевод паспорта Таджикистана",
+    notaryPassKg:"Перевод паспорта Кыргызстана", notaryPassTm:"Перевод паспорта Туркменистана",
+    notaryPassKz:"Перевод паспорта Казахстана",
+    notarySoglChild:"Согласие на выезд ребёнка за границу с другим лицом",
+    notarySoglHousing:"Согласие для жилищных и государственных органов",
+    notaryManualOptional:"Если нет в списке — впишите вручную (необязательно)",
+    notaryManualRequired:"Опишите ваш вопрос",
+    notaryManualPh:"Здесь можно написать…",
+    notaryManualPhRequired:"Какая помощь вам нужна? Опишите подробнее…",
+    notaryChoose:"Выбрано",
+    notaryPickOne:"Отметьте хотя бы одно или впишите вручную",
     stepSent:"Отправлено", stepReview:"На рассмотрении", stepDone:"Готово",
     pushEnableTitle:"Включите уведомления", pushEnableSub:"Новые объявления придут сразу на телефон — нажмите",
     pushOnTitle:"Уведомления включены", pushOnSub:"Вы сразу узнаете о новых объявлениях ✓",
@@ -1169,6 +1230,23 @@ const T = {
     phoneHint:"Eger Telegram ýa-da WhatsApp belgiňiz baglanan bolsa, haýyş, şol belgini giriziň.",
     yourPhoneLabel:"Telefon belgiňiz",
     anketaLabel:"Anketa", addAnketa:"Ýene anketa goşmak",
+    notaryCatPassport:"Pasport terjimesi", notaryCatSoglasie:"Razylyk",
+    notaryCatStraxovka:"Ätiýaçlandyryş", notaryCatOther:"Başga mesele",
+    notaryPassportHint:"🛂 Haýsy döwletiň pasportyny terjime etmeli? Haýyş, belläň. Sanawda ýok bolsa — <b>elde giriziň</b>.",
+    notarySoglasieHint:"📝 Size haýsy razylyk gerek? Haýyş, belläň. Sanawda ýok bolsa — <b>elde giriziň</b>.",
+    notaryStraxovkaHint:"🛡 Haýsy ätiýaçlandyryş gerek? Haýyş, saýlaň. Sanawda ýok bolsa — <b>elde giriziň</b>.",
+    notaryOtherHint:"💬 Siz <b>başga meseleler</b> bölüminde. Size nähili kömek edip bileris? Haýyş, elde ýazyň. Sargytdan soň birazajyk garaşyň — hünärmenimiz siz bilen basym habarlaşar.",
+    notaryPassUz:"Özbegistan pasportynyň terjimesi", notaryPassTj:"Täjigistan pasportynyň terjimesi",
+    notaryPassKg:"Gyrgyzystan pasportynyň terjimesi", notaryPassTm:"Türkmenistan pasportynyň terjimesi",
+    notaryPassKz:"Gazagystan pasportynyň terjimesi",
+    notarySoglChild:"Çagany başga adam bilen daşary ýurda ibermek üçin razylyk",
+    notarySoglHousing:"Ýaşaýyş jaý we döwlet edaralary üçin razylyk",
+    notaryManualOptional:"Sanawda ýok bolsa — elde giriziň (hökmany däl)",
+    notaryManualRequired:"Soragyňyzy ýazyň",
+    notaryManualPh:"Şu ýere ýazyp bilersiňiz…",
+    notaryManualPhRequired:"Size nähili kömek gerek? Giňişleýin ýazyň…",
+    notaryChoose:"Saýlanan",
+    notaryPickOne:"Iň bolmanda birini belläň ýa-da elde giriziň",
     stepSent:"Iberildi", stepReview:"Seredilýär", stepDone:"Taýýar",
     pushEnableTitle:"Habarnamalary açyň", pushEnableSub:"Täze bildirişler telefonyňyza derrew geler — basyň",
     pushOnTitle:"Habarnamalar açyk", pushOnSub:"Täze bildirişlerden derrew habarly bolarsyňyz ✓",
@@ -1817,6 +1895,8 @@ function screenHTML(name, opts){
     case "vizaForm": return vizaFormScreen();
     case "myVisaStatus": return myVisaStatusScreen();
     case "notarial": return notarialScreen();
+    case "notaryOrder": return notaryOrderScreen(opts);
+    case "notaryContact": return notaryContactScreen(opts);
     case "groups": return groupsScreen();
     case "addresses": return addressesScreen();
     case "help": return helpScreen();
@@ -2205,16 +2285,99 @@ function myVisaStatusScreen(){
   </div>`;
 }
 
+/* Notarial xizmatlar ro'yxati. Mijoz kerakligini belgilaydi (bir nechtasini
+   ham tanlashi mumkin), telefon raqamini qoldiradi va buyurtma yuboriladi. */
+/* ================== NOTARIAL BO'LIM ==================
+   4 ta yo'nalish: pasport tarjimasi, rozilik (soglasiye), sug'urta va
+   boshqa masalalar. Har birida mijoz kerakligini belgilaydi, xohlasa
+   qo'lda ham yozadi, telefon raqamini MAJBURIY qoldiradi — so'ng
+   tayyor matn Telegram / WhatsApp / SMS / Email orqali yuboriladi. */
+const NOTARY_CATEGORIES = {
+  passport: {
+    titleKey: "notaryCatPassport",
+    hintKey:  "notaryPassportHint",
+    options: [
+      { id:"uz", key:"notaryPassUz" },
+      { id:"tj", key:"notaryPassTj" },
+      { id:"kg", key:"notaryPassKg" },
+      { id:"tm", key:"notaryPassTm" },
+      { id:"kz", key:"notaryPassKz" }
+    ],
+    manualRequired: false
+  },
+  soglasie: {
+    titleKey: "notaryCatSoglasie",
+    hintKey:  "notarySoglasieHint",
+    options: [
+      { id:"child", key:"notarySoglChild" },
+      { id:"housing", key:"notarySoglHousing" }
+    ],
+    manualRequired: false
+  },
+  straxovka: {
+    titleKey: "notaryCatStraxovka",
+    hintKey:  "notaryStraxovkaHint",
+    // Sug'urta turlari — rasmiy qisqartmalar, tarjima qilinmaydi.
+    options: [
+      { id:"dms",  label:"ДМС" },
+      { id:"oms",  label:"ОМС" },
+      { id:"kasko",label:"КАСКО" },
+      { id:"osago",label:"ОСАГО" }
+    ],
+    manualRequired: false
+  },
+  other: {
+    titleKey: "notaryCatOther",
+    hintKey:  "notaryOtherHint",
+    options: [],            // faqat qo'lda yoziladi
+    manualRequired: true
+  }
+};
+
 function notarialScreen(){
-  const c = NOTARIAL_CONTACTS;
   return `<div class="screen active">${topbar()}
     <h2 class="title">${esc(t('notarial'))}</h2>
     <div class="section-text">${esc(t('notarialText'))}</div>
     <div class="list-col">
-      <a class="glass-btn" href="${waHref(c.whatsapp)}" target="_blank" rel="noopener">${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
-      <a class="glass-btn" href="${tgHref(c.telegram)}" target="_blank" rel="noopener">${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
-      <a class="glass-btn" href="${telHref(c.call)}">${iconCircle(ICONS.phone)}<span class="label">${esc(t('call'))}</span></a>
+      <button class="glass-btn" data-notary-cat="passport">${iconCircle(ICONS.notary)}<span class="label">${esc(t('notaryCatPassport'))}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-notary-cat="soglasie">${iconCircle(ICONS.notary)}<span class="label">${esc(t('notaryCatSoglasie'))}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-notary-cat="straxovka">${iconCircle(ICONS.notary)}<span class="label">${esc(t('notaryCatStraxovka'))}</span><span class="arrow">→</span></button>
+      <button class="glass-btn" data-notary-cat="other">${iconCircle(ICONS.help)}<span class="label">${esc(t('notaryCatOther'))}</span><span class="arrow">→</span></button>
     </div>
+  </div>`;
+}
+
+/* Bitta yo'nalish ekrani — belgilash + qo'lda yozish + telefon. */
+function notaryOrderScreen(opts){
+  const catId = (opts && opts.cat) || "passport";
+  const cat = NOTARY_CATEGORIES[catId] || NOTARY_CATEGORIES.passport;
+  const hasOptions = cat.options.length > 0;
+  return `<div class="screen active">${topbar()}
+    <h2 class="title">${esc(t(cat.titleKey))}</h2>
+    <div class="attention-pulse">${t(cat.hintKey)}</div>
+    ${hasOptions ? `
+      <div class="notary-list">
+        ${cat.options.map(o => {
+          const label = o.label || t(o.key);
+          return `<label class="notary-item">
+            <input type="checkbox" class="notary-check" value="${esc(o.id)}" data-label="${esc(label)}">
+            <span class="notary-box"></span>
+            <span class="notary-name">${esc(label)}</span>
+          </label>`;
+        }).join("")}
+      </div>` : ""}
+    <div class="error-msg" id="notaryServiceErr">${esc(t('notaryPickOne'))}</div>
+
+    <div class="field-label">${esc(cat.manualRequired ? t('notaryManualRequired') : t('notaryManualOptional'))}${cat.manualRequired ? '<span class="required-star">*</span>' : ''}</div>
+    <textarea id="notaryManual" placeholder="${esc(cat.manualRequired ? t('notaryManualPhRequired') : t('notaryManualPh'))}"></textarea>
+    <div class="error-msg" id="notaryManualErr">${esc(t('required'))}</div>
+
+    <div class="field-label" style="margin-top:14px">${esc(t('yourPhoneLabel'))}<span class="required-star">*</span></div>
+    ${phoneInput('notary')}
+    <div class="error-msg" id="notaryPhoneErr">${esc(t('phoneInvalid'))}</div>
+
+    <button class="primary-btn" id="notarySubmit" data-cat="${esc(catId)}">${esc(t('send'))}</button>
+    <div class="footer-note" id="notaryStatus" style="min-height:18px"></div>
   </div>`;
 }
 
@@ -2445,6 +2608,13 @@ function bind(name, opts){
   if(name === "contact") bindContact();
   if(name === "viza") bindViza();
   if(name === "vizaForm") bindVizaForm();
+  if(name === "notarial"){
+    document.querySelectorAll("[data-notary-cat]").forEach(b=>{
+      b.addEventListener("click", ()=> go("notaryOrder", { cat: b.dataset.notaryCat }));
+    });
+  }
+  if(name === "notaryOrder") bindNotaryOrder();
+  if(name === "notaryContact") bindNotaryContact(opts);
   if(name === "myVisaStatus") bindMyStatus();
   if(name === "addresses") bindAddresses();
   if(name === "help") bindHelp();
@@ -3028,6 +3198,124 @@ async function runVizaOcr(file, prefix){
     statusEl.className = "ocr-status empty";
     statusEl.textContent = t('ocrNotFound');
   }
+}
+
+/* Notarial buyurtmani yuborish ekrani — mijoz o'ziga qulay kanalni
+   tanlaydi. Barcha kanallarga BIR XIL tayyor matn ketadi. */
+const NOTARY_ORDER_CONTACTS = {
+  telegram: "notperevodSpbUz",
+  whatsapp: "+79516772147",
+  sms:      "+79216772147",
+  email:    "zuzik4042@gmail.com"
+};
+function notaryContactScreen(opts){
+  const text = (opts && opts.text) || "";
+  const c = NOTARY_ORDER_CONTACTS;
+  const enc = encodeURIComponent(text);
+  return `<div class="screen active">${topbar()}
+    <h2 class="title">${esc(t('chooseContact'))}</h2>
+    <div class="summary-card"><pre class="notary-summary">${esc(text)}</pre></div>
+    <div class="list-col">
+      <a class="glass-btn" href="https://t.me/${esc(c.telegram)}" target="_blank" rel="noopener" id="notaryTgBtn">
+        ${iconCircle(ICONS.telegram)}<span class="label">Telegram</span></a>
+      <a class="glass-btn" href="${waHref(c.whatsapp, text)}" target="_blank" rel="noopener">
+        ${iconCircle(ICONS.whatsapp)}<span class="label">WhatsApp</span></a>
+      <a class="glass-btn" href="${smsHref(c.sms, text)}">
+        ${iconCircle(ICONS.sms)}<span class="label">SMS</span></a>
+      <a class="glass-btn" href="mailto:${esc(c.email)}?subject=${encodeURIComponent("Notarial xizmat")}&body=${enc}">
+        ${iconCircle(ICONS.help)}<span class="label">Email</span></a>
+      <button class="glass-btn" id="notaryCopyBtn">
+        ${iconCircle(ICONS.copy)}<span class="label">${esc(t('copyText'))}</span></button>
+    </div>
+    <div class="footer-note">${esc(t('contactNote'))}</div>
+  </div>`;
+}
+function bindNotaryContact(opts){
+  const text = (opts && opts.text) || "";
+  // Telegram oldindan to'ldirilgan matnni qo'llab-quvvatlamaydi (bu
+  // Telegram cheklovi), shuning uchun matnni oldindan nusxalab qo'yamiz —
+  // mijoz chatda faqat "Paste" qilsa kifoya.
+  const tgBtn = document.getElementById("notaryTgBtn");
+  if(tgBtn) tgBtn.addEventListener("click", ()=>{ copyToClipboard(text); });
+
+  const copyBtn = document.getElementById("notaryCopyBtn");
+  if(copyBtn) copyBtn.addEventListener("click", ()=>{
+    copyToClipboard(text);
+    const l = copyBtn.querySelector(".label");
+    if(l) l.textContent = t('textCopied');
+  });
+}
+
+/* Notarial buyurtma — belgilangan variantlar + qo'lda yozilgan matn +
+   telefon (MAJBURIY) birlashtirilib, tayyor xabar hosil qilinadi. */
+function bindNotaryOrder(){
+  wirePhoneInput("notary");
+
+  const btn = document.getElementById("notarySubmit");
+  if(!btn) return;
+  const catId = btn.dataset.cat || "passport";
+  const cat = NOTARY_CATEGORIES[catId] || NOTARY_CATEGORIES.passport;
+
+  const svcErr = document.getElementById("notaryServiceErr");
+  const manualErr = document.getElementById("notaryManualErr");
+  const phoneErr = document.getElementById("notaryPhoneErr");
+  const manualEl = document.getElementById("notaryManual");
+
+  function selected(){
+    return Array.from(document.querySelectorAll(".notary-check:checked"))
+      .map(el => el.dataset.label);
+  }
+  document.querySelectorAll(".notary-check").forEach(el=>{
+    el.addEventListener("change", ()=>{
+      if(selected().length || (manualEl && manualEl.value.trim())) svcErr.style.display = "none";
+    });
+  });
+  if(manualEl){
+    manualEl.addEventListener("input", ()=>{
+      if(manualEl.value.trim()){
+        svcErr.style.display = "none";
+        manualErr.style.display = "none";
+      }
+    });
+  }
+
+  btn.addEventListener("click", ()=>{
+    const services = selected();
+    const manual = (manualEl?.value || "").trim();
+    const phoneOk = isPhoneValid("notary");
+
+    // "Boshqa masala" bo'limida qo'lda yozish MAJBURIY, qolganlarida esa
+    // kamida bitta variant belgilangan YOKI qo'lda yozilgan bo'lishi kerak.
+    let ok = true;
+    if(cat.manualRequired){
+      const has = !!manual;
+      manualErr.style.display = has ? "none" : "block";
+      svcErr.style.display = "none";
+      if(!has) ok = false;
+    }else{
+      const has = services.length > 0 || !!manual;
+      svcErr.style.display = has ? "none" : "block";
+      manualErr.style.display = "none";
+      if(!has) ok = false;
+    }
+    phoneErr.style.display = phoneOk ? "none" : "block";
+    if(!phoneOk) ok = false;
+    if(!ok) return;
+
+    const phoneVal = getPhoneValue("notary").full;
+    const lines = ["📋 " + t(cat.titleKey), ""];
+    if(services.length){
+      lines.push(t('notaryChoose') + ":");
+      services.forEach((s, i)=> lines.push(`${i + 1}. ${s}`));
+      lines.push("");
+    }
+    if(manual){
+      lines.push("💬 " + manual, "");
+    }
+    lines.push(`📞 ${t('yourPhoneLabel')}: ${phoneVal}`);
+
+    go("notaryContact", { text: lines.join("\n"), phone: phoneVal });
+  });
 }
 
 function bindVizaForm(){
