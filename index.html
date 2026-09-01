@@ -716,17 +716,24 @@
     100%{transform:translate(130vw,48vh) rotate(24deg);opacity:0;}
   }
 
+  /* An'anaviy naqsh — HAR IKKALA rejimda ham bir xil aniq ko'rinishi kerak.
+     Qorong'i fonda och rangli chiziq xiraroq ko'rinadi, shuning uchun u
+     yerda shaffoflik oshiriladi; yorug' fonda esa aksincha, past bo'ladi.
+     Shu tufayli fon almashganda naqsh "yo'qolib qolmaydi". */
   .corner-ornament{
     position:fixed;z-index:0;pointer-events:none;
-    width:300px;height:300px;color:var(--text);opacity:.07;
+    width:300px;height:300px;color:var(--text);opacity:.16;
   }
   .corner-ornament.tl{top:-86px;left:-86px;}
   .corner-ornament.br{bottom:-86px;right:-86px;transform:rotate(180deg);}
-  /* An'anaviy "girih" panjara — butun fonni juda yengil qoplaydi */
+  body.theme-light .corner-ornament{opacity:.08;}
+
+  /* An'anaviy "girih" panjara — butun fonni yengil qoplaydi */
   .girih-layer{
     position:fixed;inset:0;z-index:0;pointer-events:none;
-    color:var(--text);opacity:.035;
+    color:var(--text);opacity:.075;
   }
+  body.theme-light .girih-layer{opacity:.04;}
 
   ::-webkit-scrollbar{width:5px;}
   ::-webkit-scrollbar-thumb{background:var(--glass-border);border-radius:10px;}
@@ -3851,23 +3858,55 @@ render();
    so'rovlarimiz holatini tekshiramiz va agar u oxirgi ko'rganimizdan
    O'ZGARGAN bo'lsa (masalan "tayyor" bo'lgan), holat ekranini o'zi ochamiz.
    Bu push bosilganda ham, oddiy ochilganda ham bir xil ishonchli ishlaydi. */
-(function autoOpenChangedStatus(){
+/* ===== HOLAT O'ZGARSA — AVTOMATIK OCHISH =====
+   iPhone'da ikki xil holat bor va IKKALASINI ham qamrab olishimiz kerak:
+     1) Ilova YOPIQ edi -> push bosilganda yangidan ochiladi. Apple manzildagi
+        "#myVisaStatus" belgisini e'tiborsiz qoldiradi (ilova har doim
+        manifestdagi start_url'dan boshlanadi), shuning uchun manzilga
+        tayanmaymiz.
+     2) Ilova FONDA turgan edi -> push bosilganda u QAYTA YUKLANMAYDI, faqat
+        ekranga qaytadi. Bunda sahifa kodi qaytadan ishga tushmaydi — aynan
+        shu sabab avval hech narsa ochilmasdi.
+   Yechim: holatni ilova ochilganda HAM, ekranga har qaytganda HAM
+   tekshiramiz. */
+function checkVisaStatusChange(){
   const ids = myVisaIds();
   if(!ids.length) return;
-  // Agar allaqachon holat ekranida bo'lsak (hash orqali), takror kerak emas.
-  if(navStack[navStack.length - 1]?.name === "myVisaStatus") return;
+  // Allaqachon holat ekranida bo'lsak — takror ochish kerak emas.
+  const top = navStack[navStack.length - 1]?.name;
+  if(top === "myVisaStatus") return;
+  // Mijoz boshqa ish qilayotgan bo'lsa (forma to'ldirayotgan bo'lsa)
+  // xalaqit bermaymiz — faqat bosh sahifada turganda ochamiz.
+  if(top !== "home") return;
 
   fetchVisa().then(list=>{
     const seen = seenStatuses();
-    const changed = list.filter(v =>
-      ids.includes(v.id) && seen[v.id] !== undefined && seen[v.id] !== v.status
-    );
-    // Faqat HAQIQATAN o'zgargan bo'lsa ochamiz — har safar bezovta qilmaymiz.
-    if(!changed.length) return;
-    if(navStack[navStack.length - 1]?.name !== "home") return; // mijoz ish qilayotgan bo'lsa xalaqit bermaymiz
+    const changed = list.some(v=>{
+      if(!ids.includes(v.id)) return false;
+      // Mijoz holat ekranini hali birinchi marta ochmagan bo'lishi mumkin —
+      // bunda so'rov yuborilgandagi boshlang'ich holat "new" deb olinadi.
+      const prev = (seen[v.id] === undefined) ? "new" : seen[v.id];
+      return prev !== v.status;
+    });
+    if(!changed) return;
+    if(navStack[navStack.length - 1]?.name !== "home") return;
     go("myVisaStatus", {});
   }).catch(()=>{});
-})();
+}
+
+// 1) Ilova ochilganda
+checkVisaStatusChange();
+
+// 2) Ilova ekranga qaytganda (fondan tiklanganda) — push bosilgan holat
+//    aynan shu yerga tushadi.
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState === "visible") checkVisaStatusChange();
+});
+// Ba'zi iOS versiyalarida "visibilitychange" o'rniga "pageshow"/"focus"
+// ishonchliroq ishlaydi — ikkalasini ham qo'shamiz (takror chaqirilsa ham
+// zarari yo'q, chunki funksiya o'zi holatni qayta tekshiradi).
+window.addEventListener("pageshow", ()=> checkVisaStatusChange());
+window.addEventListener("focus", ()=> checkVisaStatusChange());
 </script>
 </body>
 </html>
