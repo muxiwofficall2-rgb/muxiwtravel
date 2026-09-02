@@ -9,42 +9,9 @@
 // Bu — SMS o'rnini bosadi va butunlay BEPUL (hech qanday operator yoki
 // to'lov kerak emas).
 
+import { readSharded, writeSharded, redisConfig } from "./_store.js";
+
 const SUB_KEY = "push_subs";
-const MAX_SUBS = 400;
-
-function redisConfig() {
-  const url = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-  const token = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-  return { url, token };
-}
-
-async function redisGet(key) {
-  const { url, token } = redisConfig();
-  const r = await fetch(`${url}/get/${key}`, {
-    headers: { Authorization: `Bearer ${token}` },
-    cache: "no-store",
-  });
-  const data = await r.json().catch(() => null);
-  if (!data || data.result === null || data.result === undefined) return null;
-  try {
-    return JSON.parse(data.result);
-  } catch (e) {
-    return null;
-  }
-}
-
-async function redisSet(key, value) {
-  const { url, token } = redisConfig();
-  const r = await fetch(`${url}/set/${key}`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(value),
-  });
-  return r.ok;
-}
 
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
@@ -66,7 +33,7 @@ export default async function handler(req, res) {
       return res.status(400).json({ error: "subscription required" });
     }
 
-    const list = (await redisGet(SUB_KEY)) || [];
+    const list = await readSharded(SUB_KEY);
     // Bir xil qurilmaning takroriy obunasini almashtiramiz (yangisi ustun).
     // Qurilma "endpoint" bo'yicha aniqlanadi — shu tufayli bitta telefon
     // ro'yxatda bir marta turadi, hatto bir necha marta obuna bo'lsa ham.
@@ -87,7 +54,9 @@ export default async function handler(req, res) {
       created: Date.now(),
     });
 
-    const ok = await redisSet(SUB_KEY, filtered.slice(0, MAX_SUBS));
+    // CHEKLOV YO'Q: ro'yxat bo'laklarga bo'lib saqlanadi, shuning uchun
+    // mijozlar soni qancha o'ssa ham hech bir obuna o'chib ketmaydi.
+    const ok = await writeSharded(SUB_KEY, filtered);
     return res.status(200).json({ ok });
   } catch (e) {
     return res.status(500).json({ ok: false, error: String(e) });
