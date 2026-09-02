@@ -65,6 +65,8 @@
 // unsure whether it's set at all.)
 // ---------------------------------------------------------------------
 
+import { readSharded, writeSharded } from "./_store.js";
+
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET
   ? process.env.TELEGRAM_WEBHOOK_SECRET.trim()
@@ -198,39 +200,33 @@ function escapeHtml(s) {
     .replace(/>/g, "&gt;");
 }
 
-async function fetchPushSubs() {
+// Oddiy ro'yxatni Redis'dan o'qish (arxiv kabi bo'laksiz yozuvlar uchun).
+async function redisGetList(key) {
   const { url, token } = redisConfig();
   if (!url || !token) return [];
   try {
-    const r = await fetchWithTimeout(`${url}/get/push_subs`, {
-      headers: { Authorization: `Bearer ${token}` },
-      cache: "no-store",
-    }, 6000);
-    const data = await r.json().catch(() => null);
-    if (!data || !data.result) return [];
-    return JSON.parse(data.result) || [];
+    const r = await fetchWithTimeout(
+      `${url}/get/${key}`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+      6000
+    );
+    if (!r.ok) return [];
+    const data = await r.json();
+    if (!data.result) return [];
+    const v = JSON.parse(data.result);
+    return Array.isArray(v) ? v : [];
   } catch (e) {
     return [];
   }
 }
 
+async function fetchPushSubs() {
+  // Obunalar bo'laklarga bo'lib saqlanadi — cheklov yo'q.
+  return await readSharded("push_subs");
+}
+
 async function savePushSubs(list) {
-  const { url, token } = redisConfig();
-  if (!url || !token) return false;
-  try {
-    const r = await fetchWithTimeout(
-      `${url}/set/push_subs`,
-      {
-        method: "POST",
-        headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" },
-        body: JSON.stringify(list),
-      },
-      6000
-    );
-    return r.ok;
-  } catch (e) {
-    return false;
-  }
+  return await writeSharded("push_subs", list);
 }
 
 async function sendPushToClient(submissionId, status) {
@@ -258,13 +254,15 @@ async function sendPushToClient(submissionId, status) {
       ? {
           title: "✅ Vizangiz tayyor!",
           body: "Anketangiz bo'yicha natija tayyor. Batafsil ko'rish uchun bosing.",
-          url: "/",
+          // Bildirishnoma bosilganda bosh sahifa emas, to'g'ridan-to'g'ri
+          // "So'rovim holati" ekrani ochiladi — mijoz qidirib yurmaydi.
+          url: "/#myVisaStatus",
           tag: "omad-visa-" + submissionId,
         }
       : {
           title: "⏳ So'rovingiz ko'rib chiqilmoqda",
           body: "Anketangiz hali tekshirilmoqda. Tayyor bo'lgach xabar beramiz.",
-          url: "/",
+          url: "/#myVisaStatus",
           tag: "omad-visa-" + submissionId,
         };
 
@@ -455,6 +453,13 @@ export default async function handler(req, res) {
         const waiting = list.filter((v) => v.status !== "ready");
 
         if (cmd === "/start" || cmd === "/holat") {
+          // Arxiv va obunalar sonini ham ko'rsatamiz — tizim holati
+          // bir qarashda ma'lum bo'lsin.
+          let archiveCount = 0, subsCount = 0;
+          try { archiveCount = (await redisGetList("visa_archive")).length; } catch(e){}
+          try { subsCount = (await fetchPushSubs()).length; } catch(e){}
+          const nearFull = list.length >= 270; // 300 ga yaqinlashganda ogohlantiramiz
+
           await tg("sendMessage", {
             chat_id: chatId,
             parse_mode: "HTML",
@@ -462,7 +467,13 @@ export default async function handler(req, res) {
               `📊 <b>Umumiy holat</b>\n\n` +
               `✅ Tayyor: <b>${ready.length}</b>\n` +
               `⏳ Kutilmoqda: <b>${waiting.length}</b>\n` +
-              `📁 Jami: <b>${list.length}</b>\n\n` +
+              `📁 Faol ro'yxatda: <b>${list.length}</b> / 300` +
+              (nearFull ? " ⚠️" : "") + `\n` +
+              `🗄 Arxivda: <b>${archiveCount}</b>\n` +
+              `📲 Bildirishnoma obunalari: <b>${subsCount}</b>\n\n` +
+              (nearFull
+                ? `⚠️ <i>Faol ro'yxat to'lmoqda. To'lganda eng eskilari avtomatik arxivga ko'chadi — hech narsa yo'qolmaydi.</i>\n\n`
+                : "") +
               `<b>Buyruqlar:</b>\n` +
               `/tayyor — tayyorlar ro'yxati\n` +
               `/kutilmoqda — javob berilmaganlar\n` +
