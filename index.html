@@ -881,7 +881,10 @@ const OFFICE_COORDS = {
 const HELP_EMAIL = "omadru@bk.ru";
 
 const MAX_NEWS_ITEMS = 30;
-const MAX_VISA_ITEMS = 40;
+/* Faol ro'yxatda saqlanadigan so'rovlar soni. Bundan oshganda eskilari
+   YO'QOLMAYDI — ular arxivga ko'chiriladi (pastdagi addVisa'ga qarang). */
+const MAX_VISA_ITEMS = 300;
+const MAX_ARCHIVE_ITEMS = 3000;
 
 /* ================== HOLAT ================== */
 const store = {
@@ -1831,7 +1834,21 @@ async function addVisa(phone, imageUrl, id, extra){
     id, phone, imageUrl, date: new Date().toLocaleString("ru-RU"), status:"new",
     barcode: (extra && extra.barcode) || ""
   });
-  const r = await kvSet("visa_submissions", list.slice(0, MAX_VISA_ITEMS));
+
+  // Faol ro'yxat to'lganda, eng eskilari O'CHIRILMAYDI — arxivga
+  // ko'chiriladi. Shu tufayli mijoz bir necha oydan keyin kelsa ham,
+  // uning so'rovi tarixda saqlanib qoladi.
+  const active = list.slice(0, MAX_VISA_ITEMS);
+  const overflow = list.slice(MAX_VISA_ITEMS);
+  if(overflow.length){
+    try{
+      const archive = await kvGet("visa_archive", []);
+      const merged = overflow.concat(Array.isArray(archive) ? archive : []);
+      await kvSet("visa_archive", merged.slice(0, MAX_ARCHIVE_ITEMS));
+    }catch(e){ /* arxivlash muvaffaqiyatsiz bo'lsa ham asosiy so'rov saqlanadi */ }
+  }
+
+  const r = await kvSet("visa_submissions", active);
   return { id, saved: r.ok, detail: r.detail };
 }
 /* Rasm fonda yuklanib bo'lgach, allaqachon saqlangan so'rovga uni qo'shadi.
@@ -2630,6 +2647,7 @@ function bind(name, opts){
 }
 
 function bindHome(){
+
   document.getElementById("newsBtn")?.addEventListener("click", ()=> go("news", {}));
   document.getElementById("shareBtn")?.addEventListener("click", shareApp);
   document.getElementById("themeBtn")?.addEventListener("click", toggleTheme);
