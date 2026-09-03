@@ -1,0 +1,353 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Omad Tour — Политика конфиденциальности / Maxfiylik siyosati</title>
+<style>
+  :root{
+    --bg:#eef2fb; --card:#fff; --text:#0c1c4d; --dim:#5a6a8a;
+    --line:#dfe6f5; --accent:#e8354f;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{ --bg:#04060b; --card:#0f1420; --text:#eef2f9; --dim:#95a3bd; --line:#1e2636; }
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; padding:0; background:var(--bg); color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    line-height:1.6; font-size:15px;
+  }
+  .wrap{max-width:760px; margin:0 auto; padding:24px 18px 60px;}
+  header{text-align:center; margin-bottom:22px;}
+  header h1{font-size:22px; margin:0 0 6px;}
+  header p{margin:0; color:var(--dim); font-size:13px;}
+  .langs{display:flex; gap:8px; justify-content:center; margin:18px 0 24px; flex-wrap:wrap;}
+  .langs button{
+    padding:9px 18px; border-radius:11px; cursor:pointer; font:inherit; font-weight:700;
+    background:var(--card); color:var(--dim); border:1.5px solid var(--line);
+  }
+  .langs button.on{border-color:var(--accent); color:var(--accent);}
+  section{
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:20px; margin-bottom:14px;
+  }
+  h2{font-size:17px; margin:0 0 10px;}
+  h3{font-size:14px; margin:16px 0 6px; color:var(--accent);}
+  ul{margin:6px 0 0; padding-left:20px;}
+  li{margin-bottom:5px;}
+  a{color:var(--accent);}
+  .box{
+    background:rgba(232,53,79,.07); border:1px solid rgba(232,53,79,.28);
+    border-radius:12px; padding:13px 15px; margin-top:12px; font-size:14px;
+  }
+  .upd{color:var(--dim); font-size:12.5px; text-align:center; margin-top:22px;}
+  [data-lang]{display:none;}
+  [data-lang].on{display:block;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <h1>OMAD TOUR</h1>
+    <p>Sankt-Peterburg</p>
+  </header>
+
+  <div class="langs">
+    <button data-go="ru" class="on">Русский</button>
+    <button data-go="uz">O‘zbekcha</button>
+    <button data-go="tm">Türkmençe</button>
+  </div>
+
+  <!-- ============ РУССКИЙ ============ -->
+  <div data-lang="ru" class="on">
+    <section>
+      <h2>Политика конфиденциальности</h2>
+      <p>Настоящая политика объясняет, какие данные обрабатывает сервис «Omad Tour»
+         (далее — Сервис), с какой целью и как они защищаются.</p>
+    </section>
+
+    <section>
+      <h2>1. Какие данные мы собираем</h2>
+      <h3>Данные, которые вы предоставляете сами</h3>
+      <ul>
+        <li><b>Номер телефона</b> — чтобы связаться с вами по вашей заявке.</li>
+        <li><b>Фотография документа</b> (анкета или паспорт) — только если вы сами загрузите её при оформлении заявки на проверку визы.</li>
+        <li><b>Номер заявки (баркод)</b> — распознаётся автоматически с загруженного вами фото или вводится вручную.</li>
+        <li><b>Текст заявки</b> — выбранные услуги и ваш комментарий в разделе нотариальных услуг.</li>
+      </ul>
+
+      <h3>Технические данные</h3>
+      <ul>
+        <li><b>Подписка на уведомления</b> — технический адрес вашего устройства, если вы разрешили push-уведомления. Он не содержит личных данных.</li>
+        <li><b>Локальные настройки</b> — язык, тема оформления и номера ваших заявок. Хранятся <b>только на вашем устройстве</b> и нам не передаются.</li>
+      </ul>
+
+      <div class="box">
+        Мы <b>не собираем</b>: геолокацию, контакты, список приложений,
+        платёжные данные, историю браузера. Мы <b>не показываем рекламу</b>
+        и <b>не продаём</b> ваши данные третьим лицам.
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Зачем мы это используем</h2>
+      <ul>
+        <li>Чтобы связаться с вами по вашей заявке.</li>
+        <li>Чтобы вы могли отслеживать статус своей заявки.</li>
+        <li>Чтобы уведомить вас, когда результат будет готов.</li>
+      </ul>
+      <p>Данные не используются для рекламы, профилирования или каких-либо иных целей.</p>
+    </section>
+
+    <section>
+      <h2>3. Кому передаются данные</h2>
+      <p>Мы используем сторонние сервисы, необходимые для работы:</p>
+      <ul>
+        <li><b>Vercel</b> — хостинг сайта.</li>
+        <li><b>Upstash (Redis)</b> — хранение заявок.</li>
+        <li><b>ImgBB</b> — хранение загруженных вами фотографий документов.</li>
+        <li><b>Telegram</b> — передача заявки нашему специалисту.</li>
+        <li><b>Apple / Google</b> — доставка push-уведомлений на ваше устройство.</li>
+      </ul>
+      <p>Мы не передаём данные никому другому, кроме случаев, прямо предусмотренных законом.</p>
+    </section>
+
+    <section>
+      <h2>4. Сколько хранятся данные</h2>
+      <p>Заявки хранятся столько, сколько необходимо для оказания услуги, после чего
+         перемещаются в архив. Вы можете в любой момент попросить нас удалить ваши
+         данные — они будут удалены.</p>
+    </section>
+
+    <section>
+      <h2>5. Ваши права</h2>
+      <ul>
+        <li>Узнать, какие ваши данные у нас есть.</li>
+        <li>Потребовать их исправления или удаления.</li>
+        <li>Отозвать разрешение на уведомления в настройках устройства.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>6. Важное уточнение</h2>
+      <div class="box">
+        «Omad Tour» — <b>частная организация</b>, а не государственный орган.
+        Мы оказываем помощь в заполнении анкет и переводе документов.
+        <b>Визу выдаёт исключительно Генеральное консульство</b>, и мы не
+        принимаем решений от имени государственных органов.
+      </div>
+    </section>
+
+    <section>
+      <h2>7. Контакты</h2>
+      <ul>
+        <li>Email: <a href="mailto:omadru@bk.ru">omadru@bk.ru</a></li>
+        <li>Telegram: <a href="https://t.me/OMAD_TOUR9094">@OMAD_TOUR9094</a></li>
+        <li>Телефон: <a href="tel:+79811939094">+7 981 193-90-94</a></li>
+        <li>Адрес: Санкт-Петербург, 4-я Красноармейская ул., д. 3</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ============ O‘ZBEKCHA ============ -->
+  <div data-lang="uz">
+    <section>
+      <h2>Maxfiylik siyosati</h2>
+      <p>Ushbu siyosat «Omad Tour» xizmati (bundan keyin — Xizmat) qanday
+         ma'lumotlarni qayta ishlashini, nima maqsadda va ular qanday
+         himoyalanishini tushuntiradi.</p>
+    </section>
+
+    <section>
+      <h2>1. Qanday ma'lumotlar yig'iladi</h2>
+      <h3>Siz o'zingiz beradigan ma'lumotlar</h3>
+      <ul>
+        <li><b>Telefon raqami</b> — so'rovingiz bo'yicha siz bilan bog'lanish uchun.</li>
+        <li><b>Hujjat surati</b> (anketa yoki pasport) — faqat viza so'rovini yuborishda o'zingiz yuklasangiz.</li>
+        <li><b>Ariza raqami (barkod)</b> — yuklagan suratingizdan avtomatik aniqlanadi yoki qo'lda kiritiladi.</li>
+        <li><b>So'rov matni</b> — notarial bo'limda tanlagan xizmatlaringiz va izohingiz.</li>
+      </ul>
+
+      <h3>Texnik ma'lumotlar</h3>
+      <ul>
+        <li><b>Bildirishnoma obunasi</b> — bildirishnomaga ruxsat bergan bo'lsangiz, qurilmangizning texnik manzili. Unda shaxsiy ma'lumot yo'q.</li>
+        <li><b>Mahalliy sozlamalar</b> — til, mavzu va so'rovlaringiz raqamlari. Bular <b>faqat sizning qurilmangizda</b> saqlanadi, bizga yuborilmaydi.</li>
+      </ul>
+
+      <div class="box">
+        Biz <b>yig'maymiz</b>: joylashuv, kontaktlar, ilovalar ro'yxati,
+        to'lov ma'lumotlari, brauzer tarixi. Biz <b>reklama ko'rsatmaymiz</b>
+        va ma'lumotlaringizni <b>sotmaymiz</b>.
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Nima uchun ishlatiladi</h2>
+      <ul>
+        <li>So'rovingiz bo'yicha siz bilan bog'lanish uchun.</li>
+        <li>Siz so'rovingiz holatini kuzatib borishingiz uchun.</li>
+        <li>Natija tayyor bo'lganda sizga xabar berish uchun.</li>
+      </ul>
+      <p>Ma'lumotlar reklama yoki boshqa maqsadlarda ishlatilmaydi.</p>
+    </section>
+
+    <section>
+      <h2>3. Kimlarga uzatiladi</h2>
+      <p>Ishlash uchun zarur bo'lgan tashqi xizmatlardan foydalanamiz:</p>
+      <ul>
+        <li><b>Vercel</b> — sayt joylashuvi.</li>
+        <li><b>Upstash (Redis)</b> — so'rovlarni saqlash.</li>
+        <li><b>ImgBB</b> — siz yuklagan hujjat suratlarini saqlash.</li>
+        <li><b>Telegram</b> — so'rovni mutaxassisimizga yetkazish.</li>
+        <li><b>Apple / Google</b> — bildirishnomalarni qurilmangizga yetkazish.</li>
+      </ul>
+      <p>Qonunda ko'zda tutilgan hollardan tashqari, ma'lumotlar boshqa hech kimga berilmaydi.</p>
+    </section>
+
+    <section>
+      <h2>4. Qancha muddat saqlanadi</h2>
+      <p>So'rovlar xizmat ko'rsatish uchun zarur muddat davomida saqlanadi, so'ng
+         arxivga o'tkaziladi. Istalgan vaqtda ma'lumotlaringizni o'chirishni
+         so'rashingiz mumkin — ular o'chiriladi.</p>
+    </section>
+
+    <section>
+      <h2>5. Sizning huquqlaringiz</h2>
+      <ul>
+        <li>Bizda qanday ma'lumotingiz borligini bilish.</li>
+        <li>Ularni tuzatish yoki o'chirishni talab qilish.</li>
+        <li>Bildirishnoma ruxsatini qurilma sozlamalaridan bekor qilish.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>6. Muhim eslatma</h2>
+      <div class="box">
+        «Omad Tour» — <b>xususiy tashkilot</b>, davlat organi emas.
+        Biz anketa to'ldirish va hujjat tarjimasida yordam beramiz.
+        <b>Vizani faqat Bosh Konsullik beradi</b> va biz davlat organlari
+        nomidan qaror qabul qilmaymiz.
+      </div>
+    </section>
+
+    <section>
+      <h2>7. Aloqa</h2>
+      <ul>
+        <li>Email: <a href="mailto:omadru@bk.ru">omadru@bk.ru</a></li>
+        <li>Telegram: <a href="https://t.me/OMAD_TOUR9094">@OMAD_TOUR9094</a></li>
+        <li>Telefon: <a href="tel:+79811939094">+7 981 193-90-94</a></li>
+        <li>Manzil: Sankt-Peterburg, 4-Krasnoarmeyskaya ko'chasi, 3-uy</li>
+      </ul>
+    </section>
+  </div>
+
+  <!-- ============ TÜRKMENÇE ============ -->
+  <div data-lang="tm">
+    <section>
+      <h2>Gizlinlik syýasaty</h2>
+      <p>Bu syýasat «Omad Tour» hyzmatynyň (mundan beýläk — Hyzmat) haýsy
+         maglumatlary işleýändigini, näme maksat bilen we olaryň nähili
+         goralýandygyny düşündirýär.</p>
+    </section>
+
+    <section>
+      <h2>1. Haýsy maglumatlar ýygnalýar</h2>
+      <h3>Siziň özüňiz berýän maglumatlaryňyz</h3>
+      <ul>
+        <li><b>Telefon belgisi</b> — sargydyňyz boýunça siz bilen habarlaşmak üçin.</li>
+        <li><b>Resminama suraty</b> (anketa ýa-da pasport) — diňe wiza sargydyny iberende özüňiz ýükleseňiz.</li>
+        <li><b>Arza belgisi (barkod)</b> — ýükläň suratyňyzdan awtomatik kesgitlenýär ýa-da elde girizilýär.</li>
+        <li><b>Sargyt teksti</b> — notarial bölüminde saýlan hyzmatlaryňyz we belligiňiz.</li>
+      </ul>
+
+      <h3>Tehniki maglumatlar</h3>
+      <ul>
+        <li><b>Habarnama abunasy</b> — habarnama rugsat berseňiz, enjamyňyzyň tehniki salgysy. Onda şahsy maglumat ýok.</li>
+        <li><b>Ýerli sazlamalar</b> — dil, tema we sargytlaryňyzyň belgileri. Bular <b>diňe siziň enjamyňyzda</b> saklanýar, bize iberilmeýär.</li>
+      </ul>
+
+      <div class="box">
+        Biz <b>ýygnamaýarys</b>: ýerleşiş, kontaktlar, goşundylar sanawy,
+        töleg maglumatlary, brauzer taryhy. Biz <b>mahabat görkezmeýäris</b>
+        we maglumatlaryňyzy <b>satmaýarys</b>.
+      </div>
+    </section>
+
+    <section>
+      <h2>2. Näme üçin ulanylýar</h2>
+      <ul>
+        <li>Sargydyňyz boýunça siz bilen habarlaşmak üçin.</li>
+        <li>Siziň sargydyňyzyň ýagdaýyny yzarlamagyňyz üçin.</li>
+        <li>Netije taýýar bolanda size habar bermek üçin.</li>
+      </ul>
+      <p>Maglumatlar mahabat ýa-da başga maksatlar üçin ulanylmaýar.</p>
+    </section>
+
+    <section>
+      <h2>3. Kimlere berilýär</h2>
+      <p>Işlemek üçin zerur bolan daşarky hyzmatlardan peýdalanýarys:</p>
+      <ul>
+        <li><b>Vercel</b> — sahypanyň ýerleşdirilmegi.</li>
+        <li><b>Upstash (Redis)</b> — sargytlary saklamak.</li>
+        <li><b>ImgBB</b> — ýükläň resminama suratlaryňyzy saklamak.</li>
+        <li><b>Telegram</b> — sargydy hünärmenimize ýetirmek.</li>
+        <li><b>Apple / Google</b> — habarnamalary enjamyňyza ýetirmek.</li>
+      </ul>
+      <p>Kanunda göz öňünde tutulan ýagdaýlardan başga, maglumatlar hiç kime berilmeýär.</p>
+    </section>
+
+    <section>
+      <h2>4. Näçe wagt saklanýar</h2>
+      <p>Sargytlar hyzmat etmek üçin zerur möhlet dowamynda saklanýar, soňra
+         arhiwe geçirilýär. Islendik wagt maglumatlaryňyzy pozmagy sorap
+         bilersiňiz — olar pozulýar.</p>
+    </section>
+
+    <section>
+      <h2>5. Siziň hukuklaryňyz</h2>
+      <ul>
+        <li>Bizde haýsy maglumatyňyzyň barlygyny bilmek.</li>
+        <li>Olary düzetmegi ýa-da pozmagy talap etmek.</li>
+        <li>Habarnama rugsadyny enjam sazlamalaryndan ýatyrmak.</li>
+      </ul>
+    </section>
+
+    <section>
+      <h2>6. Möhüm bellik</h2>
+      <div class="box">
+        «Omad Tour» — <b>hususy edara</b>, döwlet edarasy däl.
+        Biz anketa doldurmakda we resminama terjimesinde kömek edýäris.
+        <b>Wizany diňe Baş Konsullyk berýär</b> we biz döwlet edaralarynyň
+        adyndan karar kabul etmeýäris.
+      </div>
+    </section>
+
+    <section>
+      <h2>7. Habarlaşmak</h2>
+      <ul>
+        <li>Email: <a href="mailto:omadru@bk.ru">omadru@bk.ru</a></li>
+        <li>Telegram: <a href="https://t.me/OMAD_TOUR9094">@OMAD_TOUR9094</a></li>
+        <li>Telefon: <a href="tel:+79811939094">+7 981 193-90-94</a></li>
+        <li>Salgy: Sankt-Peterburg, 4-Krasnoarmeýskaýa köçesi, 3-nji jaý</li>
+      </ul>
+    </section>
+  </div>
+
+  <p class="upd">Обновлено / Yangilangan / Täzelenen: 03.09.2026</p>
+</div>
+
+<script>
+  document.querySelectorAll(".langs button").forEach(function(b){
+    b.addEventListener("click", function(){
+      var go = b.dataset.go;
+      document.querySelectorAll(".langs button").forEach(function(x){ x.classList.toggle("on", x === b); });
+      document.querySelectorAll("[data-lang]").forEach(function(s){ s.classList.toggle("on", s.dataset.lang === go); });
+      document.documentElement.lang = go === "uz" ? "uz" : (go === "tm" ? "tk" : "ru");
+      window.scrollTo(0, 0);
+    });
+  });
+</script>
+</body>
+</html>
