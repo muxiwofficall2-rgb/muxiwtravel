@@ -1,1 +1,63 @@
-{"name": "Omad Tour", "short_name": "Omad Tour", "start_url": "/", "scope": "/", "display": "standalone", "background_color": "#eef2fb", "theme_color": "#e8354f", "icons": [{"src": "data:image/png;base64,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", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"}]}
+{
+  "id": "/",
+  "name": "Omad Tour — Aviabilet, Viza, Notarial",
+  "short_name": "Omad Tour",
+  "description": "Aviachiptalar, viza natijasini tekshirish, notarial xizmatlar va tarjima. Sankt-Peterburgdagi ОМАД ТУР agentligining rasmiy ilovasi.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#eef2fb",
+  "theme_color": "#e8354f",
+  "lang": "uz",
+  "dir": "ltr",
+  "categories": [
+    "travel",
+    "business",
+    "productivity"
+  ],
+  "prefer_related_applications": false,
+  "icons": [
+    {
+      "src": "/icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/icons/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Viza natijasi",
+      "short_name": "Viza",
+      "url": "/#myVisaStatus"
+    },
+    {
+      "name": "Yangiliklar",
+      "short_name": "Yangiliklar",
+      "url": "/#news"
+    },
+    {
+      "name": "Manzillar",
+      "short_name": "Manzillar",
+      "url": "/#addresses"
+    }
+  ]
+}
