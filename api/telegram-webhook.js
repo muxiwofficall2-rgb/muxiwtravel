@@ -95,6 +95,51 @@ async function fetchWithTimeout(url, opts, timeoutMs) {
   }
 }
 
+/* ===== ZAXIRA NUSXA =====
+   Barcha ma'lumot (so'rovlar, arxiv, yangiliklar, bildirishnoma obunalari)
+   bitta faylga yig'ilib, Telegram orqali yuboriladi. Siz uni saqlab
+   qo'yasiz — agar biror narsa yo'qolsa, /tiklash orqali qaytarasiz.
+   Bu yagona himoya: bazadagi ma'lumot faqat bitta joyda turadi. */
+async function tgSendDocument(chatId, filename, content, caption) {
+  if (!BOT_TOKEN) return false;
+  try {
+    const form = new FormData();
+    form.append("chat_id", String(chatId));
+    if (caption) {
+      form.append("caption", caption);
+      form.append("parse_mode", "HTML");
+    }
+    const blob = new Blob([content], { type: "application/json" });
+    form.append("document", blob, filename);
+    const r = await fetchWithTimeout(
+      `https://api.telegram.org/bot${BOT_TOKEN}/sendDocument`,
+      { method: "POST", body: form },
+      20000
+    );
+    const data = await r.json().catch(() => null);
+    return !!(r.ok && data && data.ok);
+  } catch (e) {
+    console.error("[telegram-webhook] sendDocument failed:", e && e.message);
+    return false;
+  }
+}
+
+// Telegram'ga yuborilgan faylni yuklab olish (tiklash uchun).
+async function downloadTelegramFile(fileId) {
+  try {
+    const info = await tg("getFile", { file_id: fileId });
+    const path = info && info.result && info.result.file_path;
+    if (!path) return null;
+    const r = await fetchWithTimeout(
+      `https://api.telegram.org/file/bot${BOT_TOKEN}/${path}`, {}, 20000
+    );
+    if (!r.ok) return null;
+    return await r.text();
+  } catch (e) {
+    return null;
+  }
+}
+
 async function tg(method, payload) {
   if (!BOT_TOKEN) {
     console.error("[telegram-webhook] TELEGRAM_BOT_TOKEN is not set — cannot call", method);
@@ -198,6 +243,41 @@ function escapeHtml(s) {
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;");
+}
+
+// Xom (JSON matn) saqlash/o'qish — tiklash jarayonida vaqtincha ishlatiladi.
+async function redisSetJSONSimple(key, value) {
+  return await redisSetRaw(key, JSON.stringify(value));
+}
+async function redisSetRaw(key, rawText) {
+  const { url, token } = redisConfig();
+  if (!url || !token) return false;
+  try {
+    const r = await fetchWithTimeout(
+      `${url}/set/${key}`,
+      {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "text/plain" },
+        body: rawText,
+      },
+      8000
+    );
+    return r.ok;
+  } catch (e) { return false; }
+}
+async function redisGetRaw(key) {
+  const { url, token } = redisConfig();
+  if (!url || !token) return null;
+  try {
+    const r = await fetchWithTimeout(
+      `${url}/get/${key}`,
+      { headers: { Authorization: `Bearer ${token}` }, cache: "no-store" },
+      8000
+    );
+    if (!r.ok) return null;
+    const data = await r.json();
+    return data.result || null;
+  } catch (e) { return null; }
 }
 
 // Oddiy ro'yxatni Redis'dan o'qish (arxiv kabi bo'laksiz yozuvlar uchun).
@@ -375,6 +455,51 @@ export default async function handler(req, res) {
        /tozalash    — FAQAT tayyor bo'lganlarni hamma joydan o'chirish
      "Kutilmoqda" ro'yxatida tayyorlar KO'RINMAYDI — ular avtomatik
      chiqib ketadi, shu tufayli ro'yxat doim faqat qolgan ishni ko'rsatadi. */
+  /* ===== ZAXIRA FAYLI YUBORILDI — tiklash ===== */
+  if (msg && msg.document) {
+    const cap = (msg.caption || "").trim().toLowerCase();
+    const chatId = msg.chat && msg.chat.id;
+    if (cap.startsWith("/tiklash")) {
+      await tg("sendMessage", { chat_id: chatId, text: "⏳ Fayl tekshirilmoqda…" });
+      const text = await downloadTelegramFile(msg.document.file_id);
+      if (!text) {
+        await tg("sendMessage", { chat_id: chatId, text: "❌ Faylni yuklab bo'lmadi." });
+        return res.status(200).end();
+      }
+      let data = null;
+      try { data = JSON.parse(text); } catch (e) {}
+      if (!data || typeof data !== "object" || !Array.isArray(data.visa_submissions)) {
+        await tg("sendMessage", { chat_id: chatId, text: "❌ Bu to'g'ri zaxira fayli emas." });
+        return res.status(200).end();
+      }
+      // Faylni vaqtincha saqlaymiz — tasdiqlangandan keyin qo'llaymiz.
+      // (Telegram tugmasi orqali faqat qisqa matn uzatish mumkin, shuning
+      //  uchun ma'lumotning o'zini bazaga vaqtincha qo'yamiz.)
+      await redisSetRaw("restore_pending", text);
+      const cur = await redisGetList("visa_submissions");
+      await tg("sendMessage", {
+        chat_id: chatId,
+        parse_mode: "HTML",
+        text:
+          `♻️ <b>Tiklashga tayyor</b>\n\n` +
+          `<b>Fayldagi ma'lumot:</b>\n` +
+          `📁 So'rovlar: <b>${data.visa_submissions.length}</b>\n` +
+          `🗄 Arxiv: <b>${(data.visa_archive || []).length}</b>\n` +
+          `📰 Yangiliklar: <b>${(data.news_list || []).length}</b>\n` +
+          `📲 Obunalar: <b>${(data.push_subs || []).length}</b>\n` +
+          `🕒 Sana: ${escapeHtml(String(data.created || "—")).slice(0, 19)}\n\n` +
+          `⚠️ <b>Hozirgi ${cur.length} ta so'rov almashtiriladi.</b>\n\nDavom etamizmi?`,
+        reply_markup: {
+          inline_keyboard: [[
+            { text: "♻️ Ha, tiklansin", callback_data: "restore:yes" },
+            { text: "✖️ Bekor qilish", callback_data: "restore:no" },
+          ]],
+        },
+      });
+      return res.status(200).end();
+    }
+  }
+
   if (msg && typeof msg.text === "string" && msg.text.startsWith("/")) {
     const cmd = msg.text.trim().toLowerCase().split(/[\s@]/)[0];
     const chatId = msg.chat && msg.chat.id;
@@ -382,6 +507,53 @@ export default async function handler(req, res) {
     /* Bildirishnoma tizimini TEKSHIRISH — butun jarayonni (anketa yuborish →
        tayyor bosish) kutmasdan, darhol barcha obunachilarga sinov
        bildirishnomasi yuboradi va natijani aniq ko'rsatadi. */
+    /* ===== /zaxira — barcha ma'lumotni fayl qilib yuborish ===== */
+    if (cmd === "/zaxira") {
+      await tg("sendMessage", { chat_id: chatId, text: "⏳ Zaxira tayyorlanmoqda…" });
+      try {
+        const [visa, archive, news, subs] = await Promise.all([
+          redisGetList("visa_submissions"),
+          redisGetList("visa_archive"),
+          redisGetList("news_list"),
+          fetchPushSubs(),
+        ]);
+        const backup = {
+          version: 1,
+          created: new Date().toISOString(),
+          visa_submissions: visa,
+          visa_archive: archive,
+          news_list: news,
+          push_subs: subs,
+        };
+        const json = JSON.stringify(backup);
+        const d = new Date();
+        const stamp = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}_${String(d.getHours()).padStart(2,"0")}${String(d.getMinutes()).padStart(2,"0")}`;
+        const caption =
+          `💾 <b>Zaxira nusxa</b>\n\n` +
+          `📁 So'rovlar: <b>${visa.length}</b>\n` +
+          `🗄 Arxiv: <b>${archive.length}</b>\n` +
+          `📰 Yangiliklar: <b>${news.length}</b>\n` +
+          `📲 Obunalar: <b>${subs.length}</b>\n\n` +
+          `<i>Bu faylni saqlab qo'ying. Tiklash uchun uni botga qaytarib yuboring va izohiga /tiklash deb yozing.</i>`;
+        const ok = await tgSendDocument(chatId, `omad-zaxira-${stamp}.json`, json, caption);
+        if (!ok) {
+          await tg("sendMessage", { chat_id: chatId, text: "❌ Fayl yuborilmadi. Qayta urinib ko'ring." });
+        }
+      } catch (e) {
+        await tg("sendMessage", { chat_id: chatId, text: "❌ Xatolik: " + String(e && e.message).slice(0, 100) });
+      }
+      return res.status(200).end();
+    }
+
+    /* ===== /tiklash — yo'riqnoma ===== */
+    if (cmd === "/tiklash") {
+      await tg("sendMessage", { chat_id: chatId, parse_mode: "HTML",
+        text: `♻️ <b>Zaxiradan tiklash</b>\n\n` +
+              `Saqlab qo'ygan zaxira faylini <b>botga yuboring</b> va izohiga (caption) <code>/tiklash</code> deb yozing.\n\n` +
+              `⚠️ Tiklash hozirgi barcha ma'lumotni almashtiradi. Tasdiq so'raladi.` });
+      return res.status(200).end();
+    }
+
     if (cmd === "/test_push" || cmd === "/sinov") {
       try {
         const pub = cleanVapidKey(process.env.VAPID_PUBLIC_KEY);
@@ -478,7 +650,10 @@ export default async function handler(req, res) {
               `/tayyor — tayyorlar ro'yxati\n` +
               `/kutilmoqda — javob berilmaganlar\n` +
               `/tozalash — tayyorlarni o'chirish\n` +
-              `/test_push — bildirishnomani sinash`,
+              `/test_push — bildirishnomani sinash\n\n` +
+              `<b>Himoya:</b>\n` +
+              `/zaxira — zaxira nusxa olish\n` +
+              `/tiklash — zaxiradan tiklash`,
           });
           return res.status(200).end();
         }
@@ -515,9 +690,25 @@ export default async function handler(req, res) {
         }
         // Telegram bitta xabarda ~4096 belgi qabul qiladi — uzun ro'yxatni
         // bo'lib yuboramiz, shunda hech narsa kesilib qolmaydi.
-        const lines = items.map((v, i) => {
+        // Uzoq javobsiz turganlarni ajratamiz — 2 kundan oshganlar 🔴 bilan
+        // belgilanadi va ro'yxat TEPASIGA chiqadi, shunda ular e'tibordan
+        // chetda qolmaydi.
+        const now = Date.now();
+        const TWO_DAYS = 2 * 24 * 60 * 60 * 1000;
+        const withAge = items.map(v => {
+          // So'rov ID'si — yuborilgan vaqt (Date.now()), shundan yoshini bilamiz.
+          const ts = typeof v.id === "number" ? v.id : 0;
+          const age = ts > 0 ? now - ts : 0;
+          return { v, age, old: cmd === "/kutilmoqda" && age > TWO_DAYS };
+        });
+        withAge.sort((a, b) => (b.old ? 1 : 0) - (a.old ? 1 : 0));
+
+        const lines = withAge.map((x, i) => {
+          const v = x.v;
           const bc = v.barcode ? `\n   📋 <code>${escapeHtml(v.barcode)}</code>` : "";
-          return `${i + 1}. 📞 <code>${escapeHtml(v.phone || "—")}</code>${bc}\n   🕒 ${escapeHtml(v.date || "")}`;
+          const days = x.age > 0 ? Math.floor(x.age / (24*60*60*1000)) : 0;
+          const mark = x.old ? `🔴 <b>${days} kun javobsiz</b>\n   ` : "";
+          return `${i + 1}. ${mark}📞 <code>${escapeHtml(v.phone || "—")}</code>${bc}\n   🕒 ${escapeHtml(v.date || "")}`;
         });
         let chunk = `${title} — ${items.length} ta\n\n`;
         for (const line of lines) {
@@ -540,6 +731,82 @@ export default async function handler(req, res) {
   }
 
   /* ===== TAYYORLARNI O'CHIRISH (tasdiqlangandan keyin) ===== */
+  /* ===== ZAXIRADAN TIKLASH (tasdiqlangandan keyin) ===== */
+  if (cq && cq.data && cq.data.startsWith("restore:")) {
+    const action = cq.data.split(":")[1];
+    await tg("answerCallbackQuery", { callback_query_id: cq.id });
+
+    if (action === "no") {
+      await redisSetRaw("restore_pending", "null");
+      if (cq.message) {
+        await tg("editMessageText", {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          text: "✖️ Bekor qilindi. Hech narsa o'zgarmadi.",
+        });
+      }
+      return res.status(200).end();
+    }
+
+    try {
+      const raw = await redisGetRaw("restore_pending");
+      let data = null;
+      try { data = JSON.parse(raw); } catch (e) {}
+      if (!data || !Array.isArray(data.visa_submissions)) {
+        if (cq.message) {
+          await tg("editMessageText", {
+            chat_id: cq.message.chat.id, message_id: cq.message.message_id,
+            text: "❌ Tiklash ma'lumoti topilmadi. /tiklash orqali faylni qayta yuboring.",
+          });
+        }
+        return res.status(200).end();
+      }
+
+      // Tiklashdan OLDIN hozirgi holatni zaxira qilib yuboramiz — agar
+      // tiklash noto'g'ri bo'lsa, orqaga qaytish imkoni qolsin.
+      try {
+        const [v0, a0, n0, s0] = await Promise.all([
+          redisGetList("visa_submissions"), redisGetList("visa_archive"),
+          redisGetList("news_list"), fetchPushSubs(),
+        ]);
+        await tgSendDocument(
+          cq.message.chat.id,
+          "omad-tiklashdan-oldin.json",
+          JSON.stringify({ version: 1, created: new Date().toISOString(),
+            visa_submissions: v0, visa_archive: a0, news_list: n0, push_subs: s0 }),
+          "🛟 <i>Tiklashdan oldingi holat — ehtiyot uchun saqlab qo'ying.</i>"
+        );
+      } catch (e) { /* bu qadam majburiy emas */ }
+
+      const results = await Promise.all([
+        redisSetJSONSimple("visa_submissions", data.visa_submissions || []),
+        redisSetJSONSimple("visa_archive", data.visa_archive || []),
+        redisSetJSONSimple("news_list", data.news_list || []),
+        writeSharded("push_subs", data.push_subs || []),
+      ]);
+      const ok = results.every(Boolean);
+      await redisSetRaw("restore_pending", "null");
+
+      if (cq.message) {
+        await tg("editMessageText", {
+          chat_id: cq.message.chat.id,
+          message_id: cq.message.message_id,
+          parse_mode: "HTML",
+          text: ok
+            ? `♻️ <b>Tiklandi.</b>\n\n📁 So'rovlar: <b>${(data.visa_submissions||[]).length}</b>\n` +
+              `🗄 Arxiv: <b>${(data.visa_archive||[]).length}</b>\n` +
+              `📰 Yangiliklar: <b>${(data.news_list||[]).length}</b>\n` +
+              `📲 Obunalar: <b>${(data.push_subs||[]).length}</b>`
+            : "⚠️ Tiklashda xatolik bo'ldi. /holat orqali tekshiring.",
+        });
+      }
+      console.log("[telegram-webhook] restore complete:", { ok });
+    } catch (e) {
+      console.error("[telegram-webhook] restore error:", e && e.message);
+    }
+    return res.status(200).end();
+  }
+
   if (cq && cq.data && cq.data.startsWith("purge:")) {
     const action = cq.data.split(":")[1];
     await tg("answerCallbackQuery", { callback_query_id: cq.id });
