@@ -1,12 +1,8 @@
-[
-  {
-    "relation": ["delegate_permission/common.handle_all_urls"],
-    "target": {
-      "namespace": "android_app",
-      "package_name": "app.vercel.omadspb.twa",
-      "sha256_cert_fingerprints": [
-        "BU_YERGA_PLAY_CONSOLE_DAN_OLINGAN_SHA256_QO_YILADI"
-      ]
-    }
-  }
-]
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.vercel.omadspb.twa",
+        "sha256_cert_fingerprints": ["BF:6C:F3:81:16:32:6D:C5:FE:06:87:98:ED:CF:F8:78:A7:F3:1D:74:04:8A:EC:A4:F5:16:D0:67:4E:B8:48:68"]
+      }
+    }]
