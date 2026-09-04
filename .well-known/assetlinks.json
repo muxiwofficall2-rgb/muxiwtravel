@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "app.vercel.omadspb.twa",
+      "sha256_cert_fingerprints": [
+        "BU_YERGA_PLAY_CONSOLE_DAN_OLINGAN_SHA256_QO_YILADI"
+      ]
+    }
+  }
+]
